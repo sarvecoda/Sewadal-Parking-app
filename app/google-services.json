@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "207838631968",
+    "project_id": "sns-parking-app-blr-d40c7",
+    "storage_bucket": "sns-parking-app-blr-d40c7.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:207838631968:android:b353a32f376c4ee91e0445",
+        "android_client_info": {
+          "package_name": "com.example.snsparkingappblr"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "207838631968-hh53vm83vka5ifa12a6selkqg6fjfpea.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.snsparkingappblr",
+            "certificate_hash": "cbe571d7c178c4fbe86e4f3a418207a1836a1c7c"
+          }
+        },
+        {
+          "client_id": "207838631968-s01cs45fafg4e93gdpna8ul4v9t53jhc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4LumtzZ5ZyRajn6Eg8QuXtKXnutRVGu4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "207838631968-s01cs45fafg4e93gdpna8ul4v9t53jhc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

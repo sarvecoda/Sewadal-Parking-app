@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:padding="5dp"
+    >
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Do you want to add this person's vehicle"
+        android:textStyle="bold"
+        android:textSize="15sp"
+        android:gravity="center"
+        />
+
+    <TextView
+        android:id="@+id/aboutToBeAddedValues"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_marginTop="10dp"
+        android:textStyle="bold"
+        />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="30dp"
+        >
+
+        <Button
+            android:id="@+id/finalVehicleAddingYesbtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="YES"
+            app:backgroundTint="@color/skyblue"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            />
+
+        <Button
+            android:id="@+id/finalVehicleAddingNobtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="NO"
+            app:backgroundTint="@color/skyblue"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            />
+
+    </LinearLayout>
+
+
+
+</LinearLayout>

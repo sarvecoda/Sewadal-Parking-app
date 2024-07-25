@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <inset
+            android:drawable="@drawable/parking_app_icon"
+            android:insetTop="10dp"
+            android:insetBottom="10dp"
+            android:insetLeft="35dp"
+            android:insetRight="35dp" />
+    </item>
+</layer-list>

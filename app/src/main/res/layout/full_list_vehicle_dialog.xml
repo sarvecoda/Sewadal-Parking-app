@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:padding="2dp"
+    android:background="@color/khakhi"
+    >
+
+    <androidx.appcompat.widget.SearchView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/searchVehiclesList"
+        app:queryHint="Search here ...."
+        app:iconifiedByDefault="false"
+        android:background="@drawable/search_background"
+        />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/fullRecyclerList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp" />
+
+    <Button
+        android:id="@+id/cancelRecyclerList"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="cancel"
+        android:layout_gravity="center"
+        app:backgroundTint="@color/skyblue"
+        />
+
+</LinearLayout>
