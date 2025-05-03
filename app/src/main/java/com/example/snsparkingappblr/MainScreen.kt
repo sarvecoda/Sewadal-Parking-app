@@ -174,20 +174,6 @@ class MainScreen : AppCompatActivity(), FirestoreVehicleAdapter.OnItemClickListe
             }
     }
 
-    private fun adddatatoFi1restore(newdata: VehicleData, path: String) {
-        db.collection(path)
-            .add(newdata)
-            .addOnSuccessListener { documentReference ->
-                Log.d("Firestore", "Document added with ID: ${documentReference.id}")
-            }
-            .addOnFailureListener { e ->
-                Log.e("Firestore", "Error adding document", e)
-            }
-    }
-    private fun show(){
-
-    }
-
     private fun setdialogwidth(Newdialog: Dialog) {
         val window = Newdialog.window
         val layoutParams = WindowManager.LayoutParams().apply {
