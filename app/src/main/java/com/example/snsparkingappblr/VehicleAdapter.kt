@@ -7,48 +7,70 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.example.snsparkingappblr.databinding.LiveVehicleFomatLooklikeBinding
 
-class VehicleAdapter(private val vehicleDataList: ArrayList<VehicleData>, private val listener: OnItemClickListener) : RecyclerView.Adapter<VehicleAdapter.MyViewHolder>() {
+class VehicleAdapter(
+    private val items: MutableList<VehicleData>,
+    private val listener: OnItemClickListener
+) : RecyclerView.Adapter<VehicleAdapter.ViewHolder>() {
 
-    class MyViewHolder(private val binding: LiveVehicleFomatLooklikeBinding) : RecyclerView.ViewHolder(binding.root) {
-        val liveVehicleMain = binding.liveVehicleMain
-        fun bind(vehicleData: VehicleData, listener: OnItemClickListener) {
-            binding.liveSlNoLookLike.text = vehicleData.id.toString()
-            binding.liveNameLookLike.text = vehicleData.entry1
-            binding.liveVehNoLookLike.text = vehicleData.entry2
-            binding.liveMobileNoLookLike.text = vehicleData.entry3
-            binding.liveModelNameLookLike.text = vehicleData.entry4
+    init { setHasStableIds(true) }         // smoother animations
 
-            // Add click listeners for individual components
+    /* ---------------------------------  View holder  --------------------------------- */
+
+    class ViewHolder(private val binding: LiveVehicleFomatLooklikeBinding) :
+        RecyclerView.ViewHolder(binding.root) {
+
+        val row = binding.liveVehicleMain
+
+        fun bind(vehicle: VehicleData, listener: OnItemClickListener) {
+            binding.liveSlNoLookLike.text   = vehicle.id.toString()
+            binding.liveNameLookLike.text   = vehicle.entry1
+            binding.liveVehNoLookLike.text  = vehicle.entry2
+            binding.liveMobileNoLookLike.text = vehicle.entry3
+            binding.liveModelNameLookLike.text = vehicle.entry4
+
             binding.ivDelete.setOnClickListener {
-                listener.deleteButtonOnClick(vehicleData)
+                listener.deleteButtonOnClick(vehicle)
             }
-
-            // Add click listener to confirm and call the mobile number
             binding.liveMobileNoLookLike.setOnClickListener {
-                listener.onCallButtonClick(binding.root.context, vehicleData)
+                listener.onCallButtonClick(binding.root.context, vehicle)
             }
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MyViewHolder {
-        val binding = LiveVehicleFomatLooklikeBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return MyViewHolder(binding)
+    /* -------------------------------- Recycler stuff --------------------------------- */
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val binding = LiveVehicleFomatLooklikeBinding
+            .inflate(LayoutInflater.from(parent.context), parent, false)
+        return ViewHolder(binding)
     }
 
-    override fun onBindViewHolder(holder: MyViewHolder, position: Int) {
-        val currentRow = vehicleDataList[position]
-        holder.bind(currentRow, listener)
+    override fun getItemCount() = items.size
 
-        if (position % 2 == 0) {
-            holder.liveVehicleMain.setBackgroundColor(ContextCompat.getColor(holder.itemView.context, R.color.khakhi))
-        } else {
-            holder.liveVehicleMain.setBackgroundColor(ContextCompat.getColor(holder.itemView.context, R.color.skyblue))
-        }
+    override fun getItemId(position: Int): Long =
+        items[position].entry2.hashCode().toLong()   // any unique value
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val vehicle = items[position]
+        holder.bind(vehicle, listener)
+
+        // alternating row colours
+        val colourRes = if (position % 2 == 0) R.color.khakhi else R.color.skyblue
+        holder.row.setBackgroundColor(
+            ContextCompat.getColor(holder.itemView.context, colourRes)
+        )
     }
 
-    override fun getItemCount(): Int {
-        return vehicleDataList.size
+    /* ---------------------------------  Helpers  ------------------------------------- */
+
+    /** Replace the adapter’s backing list and refresh the rows. */
+    fun update(newList: List<VehicleData>) {
+        items.clear()
+        items.addAll(newList)
+        notifyDataSetChanged()
     }
+
+    /* ---------------------------------  Contract  ------------------------------------ */
 
     interface OnItemClickListener {
         fun deleteButtonOnClick(vehicleData: VehicleData)

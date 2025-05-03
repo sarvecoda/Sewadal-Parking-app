@@ -70,4 +70,19 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 
+    // ViewModel + Coroutines support
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.1")
+    // (you already need this too, because MainScreen uses lifecycleScope)
+    implementation ("androidx.lifecycle:lifecycle-runtime-ktx:2.8.1")
+
+    // If you call Task.await() on Firebase (VehicleRepository does),
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+
+    // Property‑delegate that gives you `by viewModels()`
+    implementation("androidx.activity:activity-ktx:1.9.0")
+
+    // You already added these two for coroutines / ViewModel:
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.1")
+
 }

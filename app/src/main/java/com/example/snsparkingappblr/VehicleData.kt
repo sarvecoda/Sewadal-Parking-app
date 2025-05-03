@@ -1,9 +1,9 @@
 package com.example.snsparkingappblr
 
 data class VehicleData(
-    var id: Int ,
-    var entry1: String = "",
-    var entry2: String = "",
-    var entry3: String = "",
-    var entry4: String = ""
+    val id: Int = 0,
+    val entry1: String = "",
+    val entry2: String = "",
+    val entry3: String = "",
+    val entry4: String = ""
 )
