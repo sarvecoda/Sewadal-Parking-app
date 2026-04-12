@@ -21,7 +21,14 @@ type Props = {
   onClose: () => void
 }
 
+function firebaseAuthUsersConsoleUrl(): string | null {
+  const id = import.meta.env.VITE_FIREBASE_PROJECT_ID?.trim()
+  if (!id) return null
+  return `https://console.firebase.google.com/project/${encodeURIComponent(id)}/authentication/users`
+}
+
 export function AdminAccessModal({ db, authUser, onClose }: Props) {
+  const authUsersConsoleHref = firebaseAuthUsersConsoleUrl()
   const [tab, setTab] = useState<Tab>('requests')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -212,8 +219,22 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
       ) : (
         <div className="admin-access-list">
           <p className="login-note login-note--muted">
-            People approved through this app. Remove clears their staff access in Firestore only; to
-            delete their Auth user as well, use Firebase Console → Authentication → Users.
+            People approved through this app. Remove clears their staff access in Firestore only. To
+            delete their login under Authentication, open{' '}
+            {authUsersConsoleHref ? (
+              <a
+                href={authUsersConsoleHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="link-button"
+              >
+                Firebase → Authentication → Users
+              </a>
+            ) : (
+              <span>Firebase Console → Authentication → Users</span>
+            )}
+            {' '}
+            (same browser / Google account you use for the console).
           </p>
           <ul className="admin-access-user-list">
             {userRowsForList.map((u) => (
