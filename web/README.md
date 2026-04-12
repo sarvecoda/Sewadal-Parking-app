@@ -28,7 +28,7 @@ Access requests and approvals use **callable Cloud Functions** in `web/functions
 cd web && npm run deploy
 ```
 
-That runs `npm run build` in `web/functions/` then `firebase deploy --only hosting,functions`.
+That runs `npm run build` in `web/functions/` then **hosting** first, then **functions** (two deploy steps so Hosting still updates if Functions fail, e.g. before Blaze upgrade).
 
 **Billing:** Cloud Functions for Firebase usually require the **Blaze** plan on the Firebase project. If deploy fails, upgrade billing in the Firebase console, then run `npm run deploy` again. Until then you can ship **only** the web app with `npm run deploy:hosting` (approval flows will not work until Functions are deployed).
 
@@ -104,5 +104,5 @@ In [Firebase Console](https://console.firebase.google.com/) → your project →
 | -------------- | -------------------------------- |
 | `npm run dev`  | Local development                |
 | `npm run build`| Production build → `dist/`       |
-| `npm run deploy` | Build web + functions, then `firebase deploy --only hosting,functions` |
+| `npm run deploy` | Build web + functions, then `firebase deploy --only hosting` then `--only functions` |
 | `npm run deploy:hosting` | Build web only, then `firebase deploy --only hosting` (no Cloud Functions) |
