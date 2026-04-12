@@ -5,6 +5,8 @@ export type VehicleData = {
   entry2: string
   entry3: string
   entry4: string
+  /** Set on today-list writes so the list can show oldest first, newest last. */
+  addedAt?: { toMillis: () => number }
 }
 
 export type VehicleDoc = {

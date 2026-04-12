@@ -729,16 +729,24 @@ body {
   opacity: 0.95;
 }
 
-.vehicle-card__main {
+.vehicle-card__grid {
   flex: 1;
   min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2rem 0.45rem;
+  align-content: center;
+  text-align: left;
+  font-size: 0.86rem;
 }
 
-.vehicle-card__row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.65rem;
-  font-size: 0.88rem;
+.vehicle-card__grid-tap {
+  text-align: left;
+}
+
+.vehicle-card__meta {
+  font-weight: 600;
+  opacity: 0.95;
 }
 
 .vehicle-card__name,
@@ -765,9 +773,77 @@ body {
   opacity: 0.65;
 }
 
-.vehicle-card__model {
-  font-weight: 600;
-  opacity: 0.95;
+/* ----- Delete confirm (toast-style bar) ----- */
+.delete-confirm-toast {
+  position: fixed;
+  z-index: 250;
+  left: env(safe-area-inset-left, 0px);
+  right: env(safe-area-inset-right, 0px);
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  margin: 0 10px;
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1rem 1.1rem 1.1rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  animation: toast-in 0.2s ease;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.delete-confirm-toast__title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.delete-confirm-toast__meta {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.delete-confirm-toast__sep {
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.delete-confirm-toast__sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.delete-confirm-toast__hint {
+  margin: 0.65rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-subtle);
+}
+
+.delete-confirm-toast__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 1rem;
+}
+
+.delete-confirm-toast__actions .btn {
+  flex: 1;
 }
 
 /* ----- Modal sheet ----- */

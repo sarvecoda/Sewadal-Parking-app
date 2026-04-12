@@ -90,6 +90,9 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
   const canAdmin = isAppAdmin(authUser)
   const [confirmAdd, setConfirmAdd] = useState<VehicleData | null>(null)
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<
+    null | { row: VehicleDoc; kind: 'today' | 'master' }
+  >(null)
   const [editVehicle, setEditVehicle] = useState<VehicleDoc | null>(null)
   const editInitialPlateRef = useRef('')
   const [deleteAllOpen, setDeleteAllOpen] = useState(false)
@@ -116,6 +119,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     setSearchOpen(false)
     setSearchQuery('')
     setOpenSwipeId(null)
+    setDeleteConfirm(null)
   }, [busy])
 
   const closeAdd = useCallback(() => {
@@ -128,6 +132,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || busy) return
       if (confirmAdd) setConfirmAdd(null)
+      else if (deleteConfirm) setDeleteConfirm(null)
       else if (openSwipeId) setOpenSwipeId(null)
       else if (editVehicle) setEditVehicle(null)
       else if (deleteAllOpen) setDeleteAllOpen(false)
@@ -140,6 +145,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
   }, [
     busy,
     confirmAdd,
+    deleteConfirm,
     openSwipeId,
     editVehicle,
     deleteAllOpen,
@@ -213,26 +219,22 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     }
   }
 
-  async function deleteTodayRow(row: VehicleDoc) {
+  async function executeConfirmedDelete() {
+    if (!deleteConfirm) return
+    const { row, kind } = deleteConfirm
     setPending('deleteOne')
     try {
-      await deleteVehicleDoc(db, row.id, true)
-      setOpenSwipeId((cur) => (cur === row.id ? null : cur))
-      showToast('Removed from today')
-    } catch (e) {
-      setFireErr(formatFirestoreError(e))
-    } finally {
-      setPending(null)
-    }
-  }
-
-  async function deleteMasterRow(row: VehicleDoc) {
-    const swipeKey = `m-${row.id}`
-    setPending('deleteOne')
-    try {
-      await deleteVehicleDoc(db, row.id, false)
-      setOpenSwipeId((cur) => (cur === swipeKey ? null : cur))
-      showToast('Removed from master')
+      if (kind === 'today') {
+        await deleteVehicleDoc(db, row.id, true)
+        setOpenSwipeId((cur) => (cur === row.id ? null : cur))
+        showToast('Removed from today')
+      } else {
+        const swipeKey = `m-${row.id}`
+        await deleteVehicleDoc(db, row.id, false)
+        setOpenSwipeId((cur) => (cur === swipeKey ? null : cur))
+        showToast('Removed from master')
+      }
+      setDeleteConfirm(null)
     } catch (e) {
       setFireErr(formatFirestoreError(e))
     } finally {
@@ -336,7 +338,8 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
           <p className="main-eyebrow">SNS Parking · BLR</p>
           <h1 className="main-title">Today’s list</h1>
           <p className="main-sub">
-            {today.length} vehicle{today.length === 1 ? '' : 's'} · {all.length} in master
+            {today.length} vehicle{today.length === 1 ? '' : 's'} · {all.length} in master · oldest
+            at top
           </p>
         </div>
         <div className="main-header__actions">
@@ -416,32 +419,28 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
                     })
                   }
                   onEdit={() => beginEdit(row)}
-                  onDelete={() => void deleteTodayRow(row)}
+                  onDelete={() => setDeleteConfirm({ row, kind: 'today' })}
                   disabled={busy}
                 >
                   <div
                     className={`vehicle-card ${index % 2 === 0 ? 'vehicle-card--a' : 'vehicle-card--b'}`}
                   >
                     <div className="vehicle-card__sl">{index + 1}</div>
-                    <div className="vehicle-card__main">
-                      <div className="vehicle-card__row">
-                        <span className="vehicle-card__name">{row.data.entry1}</span>
-                        <span className="vehicle-card__plate">{row.data.entry2}</span>
-                      </div>
-                      <div className="vehicle-card__row">
-                        <button
-                          type="button"
-                          className="vehicle-card__phone"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (!busy) setCallConfirm(row.data)
-                          }}
-                          disabled={busy}
-                        >
-                          {row.data.entry3 || '—'}
-                        </button>
-                        <span className="vehicle-card__model">{row.data.entry4}</span>
-                      </div>
+                    <div className="vehicle-card__grid">
+                      <span className="vehicle-card__name">{row.data.entry1}</span>
+                      <span className="vehicle-card__plate">{row.data.entry2}</span>
+                      <button
+                        type="button"
+                        className="vehicle-card__phone vehicle-card__grid-tap"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (!busy) setCallConfirm(row.data)
+                        }}
+                        disabled={busy}
+                      >
+                        {row.data.entry3 || '—'}
+                      </button>
+                      <span className="vehicle-card__meta">{row.data.entry4}</span>
                     </div>
                   </div>
                 </SwipeActionRow>
@@ -576,7 +575,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
                         })
                       }
                       onEdit={() => beginEdit(row)}
-                      onDelete={() => void deleteMasterRow(row)}
+                      onDelete={() => setDeleteConfirm({ row, kind: 'master' })}
                       onRowTap={() => !busy && setConfirmAdd({ ...row.data })}
                       disabled={busy}
                     >
@@ -782,6 +781,58 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
         </ModalFrame>
       ) : null}
     </div>
+    {deleteConfirm ? (
+      <div
+        className="delete-confirm-toast"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-confirm-title"
+      >
+        <p id="delete-confirm-title" className="delete-confirm-toast__title">
+          Are you sure you want to delete?
+        </p>
+        <p className="delete-confirm-toast__meta">
+          <strong>{deleteConfirm.row.data.entry1}</strong>
+          <span className="delete-confirm-toast__sep"> · </span>
+          {deleteConfirm.row.data.entry2}
+        </p>
+        {(deleteConfirm.row.data.entry3 || deleteConfirm.row.data.entry4) && (
+          <p className="delete-confirm-toast__sub">
+            {deleteConfirm.row.data.entry3 ? (
+              <span>{deleteConfirm.row.data.entry3}</span>
+            ) : null}
+            {deleteConfirm.row.data.entry3 && deleteConfirm.row.data.entry4 ? (
+              <span className="delete-confirm-toast__sep"> · </span>
+            ) : null}
+            {deleteConfirm.row.data.entry4 ? <span>{deleteConfirm.row.data.entry4}</span> : null}
+          </p>
+        )}
+        <p className="delete-confirm-toast__hint">
+          {deleteConfirm.kind === 'today'
+            ? 'Removes this vehicle from today’s list only. The master list is unchanged.'
+            : 'Removes this vehicle from the master database. Matching rows on today’s list are not removed automatically.'}
+        </p>
+        <div className="delete-confirm-toast__actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setDeleteConfirm(null)}
+            disabled={busy}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={() => void executeConfirmedDelete()}
+            disabled={busy}
+          >
+            {pending === 'deleteOne' ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    ) : null}
+
     {adminOpen && authUser ? (
       <AdminAccessModal db={db} authUser={authUser} onClose={() => setAdminOpen(false)} />
     ) : null}

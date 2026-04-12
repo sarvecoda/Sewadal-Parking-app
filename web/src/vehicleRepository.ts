@@ -6,6 +6,7 @@ import {
   limit,
   onSnapshot,
   query,
+  serverTimestamp,
   writeBatch,
   type Firestore,
   type Unsubscribe,
@@ -22,6 +23,22 @@ const BATCH_DELETE_LIMIT = 450
 
 function colRef(db: Firestore, today: boolean) {
   return collection(db, today ? TODAY_COLLECTION : ALL_COLLECTION)
+}
+
+function docAddedAtMillis(data: VehicleData): number {
+  const a = data.addedAt
+  if (a && typeof a.toMillis === 'function') return a.toMillis()
+  return 0
+}
+
+/** Today’s list: first added at top, latest at bottom (missing `addedAt` sorts with oldest). */
+function sortTodayDocsOldestFirst(rows: VehicleDoc[]): VehicleDoc[] {
+  return [...rows].sort((a, b) => {
+    const da = docAddedAtMillis(a.data)
+    const db = docAddedAtMillis(b.data)
+    if (da !== db) return da - db
+    return a.id.localeCompare(b.id)
+  })
 }
 
 function clip(s: string): string {
@@ -74,7 +91,7 @@ export function subscribeVehicles(
         const data = d.data() as VehicleData
         rows.push({ id: d.id, data })
       })
-      onUpdate(rows)
+      onUpdate(today ? sortTodayDocsOldestFirst(rows) : rows)
     },
     (e) => onError(e as Error),
   )
@@ -93,7 +110,7 @@ export async function addVehicleToBoth(
   const allRef = doc(collection(db, ALL_COLLECTION))
   const todayRef = doc(collection(db, TODAY_COLLECTION))
   batch.set(allRef, v)
-  batch.set(todayRef, v)
+  batch.set(todayRef, { ...v, addedAt: serverTimestamp() })
   await batch.commit()
 }
 
