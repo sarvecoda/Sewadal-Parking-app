@@ -38,14 +38,18 @@ function generateStrongPassword(length = 18): string {
 
 const fixedResetEmail = import.meta.env.VITE_PASSWORD_RESET_EMAIL?.trim() ?? ''
 
+/** Starter form defaults; create this user in Firebase Auth (see README). */
+const STARTER_USERNAME = 'snmparking'
+const STARTER_PASSWORD = 'nirankar'
+
 /**
  * Username + password (see `VITE_LOGIN_EMAIL_DOMAIN`), or full email if value contains `@`.
  * Forgot password: sends Firebase reset to `VITE_PASSWORD_RESET_EMAIL` if set, else to the
  * account for the username typed above.
  */
 export function LoginScreen() {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
+  const [username, setUsername] = useState(STARTER_USERNAME)
+  const [password, setPassword] = useState(STARTER_PASSWORD)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
