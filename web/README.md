@@ -9,15 +9,24 @@ Mobile-first web client for the same Firestore data as the Android app (`your_co
 
 ## Sign-in (Firebase Authentication)
 
-The web app uses **Email / password** via Firebase Auth (not the old hardcoded demo).
+The web app uses **Firebase Email / password**. On the login screen staff type a **username** (not your personal Gmail). Behind the scenes that becomes `username@YOUR_DOMAIN` — you choose `YOUR_DOMAIN` and create matching users in Firebase.
 
-1. In [Firebase Console](https://console.firebase.google.com/) → **Authentication** → **Sign-in method** → enable **Email/Password**.
-2. **Authentication** → **Users** → **Add user** — create each staff email and initial password (they can change it via **Forgot password?** on the login screen).
-3. Optional: set `VITE_LEGACY_LOGIN=true` in `.env` to bring back the temporary **nirankar / nirankar** demo login while you migrate (not recommended for production).
+### One-time setup
 
-**Forgot password:** sends a **password reset link** email from Google/Firebase to the address the user enters (standard industry flow). We do **not** email a random password from this app (that would require a custom server and is less secure).
+1. **Authentication** → **Sign-in method** → enable **Email/Password**.
+2. Pick a domain you control (or a single shared mailbox pattern), e.g. `park.yourorg.com` with Google Workspace / DNS, or another hoster. Each worker is a Firebase user like `mandeep@park.yourorg.com` (local part = what they type as **username**).
+3. In `web/.env` set **`VITE_LOGIN_EMAIL_DOMAIN=park.yourorg.com`** (no `@`). Rebuild / redeploy after changing env.
+4. Optional: set `VITE_LEGACY_LOGIN=true` for the old **nirankar / nirankar** demo only while migrating.
 
-**Suggest strong password:** generates a random password in the browser, fills the field, and copies it to the clipboard — useful when setting a new password after opening the reset link or when updating a user in the Console.
+**Full email still works:** if someone types an address with `@`, it is used as-is (for admins).
+
+### Forgot password
+
+- No email is shown on screen. **Forgot password?** uses the **username** already typed on the sign-in form and sends Firebase’s reset mail to the address on file for that account.
+- **Reset link “expired / already used” right away:** often an **email scanner** opened the link before you (one-time links). Try **Resend link**, wait a minute, open from **desktop Gmail in a browser**, or **“Open in Safari/Chrome”** instead of an in-app webview. Avoid preview panes that fetch URLs.
+- **Spam:** ask users to **“Not spam”** / add the sender to contacts. For a custom domain, set up **SPF/DKIM** for that domain in Google Workspace or your DNS host so Google trusts the mail more.
+
+**Suggest strong password:** fills the password field and copies a random password to the clipboard (for use after the reset link or when editing a user in the Console).
 
 ## Firebase Hosting (same idea as [Book Inventory on web.app](https://book-inventory-app-f1a77.web.app))
 

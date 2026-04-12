@@ -46,8 +46,10 @@ export default function App() {
           <code>npm run dev</code>.
         </p>
         <p className="setup-muted">
-          For sign-in: enable <strong>Authentication → Sign-in method → Email/Password</strong>, then
-          add users under <strong>Authentication → Users</strong>.
+          For sign-in: enable <strong>Authentication → Sign-in method → Email/Password</strong>, add
+          users under <strong>Authentication → Users</strong>, and set{' '}
+          <code>VITE_LOGIN_EMAIL_DOMAIN</code> in <code>web/.env</code> for username-only login (see{' '}
+          <code>web/README.md</code>).
         </p>
       </div>
     )

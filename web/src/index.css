@@ -867,6 +867,17 @@ body {
   width: 100%;
 }
 
+.modal-footer--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.modal-footer--stack .btn {
+  flex: none;
+  width: 100%;
+}
+
 .modal-hint {
   margin: 0 0 0.65rem;
   font-size: 0.82rem;

@@ -6,6 +6,11 @@ import {
   sendPasswordResetEmail,
 } from 'firebase/auth'
 import { formatAuthError } from '../authErrors'
+import {
+  isEmailDomainConfigured,
+  normalizeLocalPart,
+  resolveSignInIdentifier,
+} from '../authIdentity'
 import { getFirebaseAuth } from '../firebase'
 import { ModalFrame } from './ModalFrame'
 
@@ -34,20 +39,21 @@ function generateStrongPassword(length = 18): string {
 }
 
 /**
- * Firebase Email/Password sign-in. Enable Authentication → Email/Password in the
- * Firebase Console and create users there (Authentication → Users → Add user).
+ * Sign-in with **username** + password (mapped to `username@VITE_LOGIN_EMAIL_DOMAIN`),
+ * or full **email** if the value contains `@`. Firebase Auth must have matching users.
  */
 export function LoginScreen() {
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
   const [forgotOpen, setForgotOpen] = useState(false)
-  const [resetEmail, setResetEmail] = useState('')
   const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [resetMessage, setResetMessage] = useState('')
+
+  const domainConfigured = isEmailDomainConfigured()
 
   useEffect(() => {
     let cancelled = false
@@ -64,13 +70,34 @@ export function LoginScreen() {
     }
   }, [])
 
+  function resolveOrSetError(): string | null {
+    try {
+      return resolveSignInIdentifier(username)
+    } catch (e) {
+      if (e instanceof Error) {
+        if (e.message === 'MISSING_EMAIL_DOMAIN') {
+          setError(
+            'Set VITE_LOGIN_EMAIL_DOMAIN in web/.env (same domain as Firebase user emails, e.g. park.yourorg.com).',
+          )
+        } else if (e.message === 'EMPTY_USERNAME') {
+          setError('Enter your username.')
+        } else {
+          setError(e.message)
+        }
+      }
+      return null
+    }
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
+    const authEmail = resolveOrSetError()
+    if (!authEmail) return
     setBusy(true)
     try {
       const auth = getFirebaseAuth()
-      await signInWithEmailAndPassword(auth, email.trim(), password)
+      await signInWithEmailAndPassword(auth, authEmail, password)
     } catch (err) {
       setError(formatAuthError(err))
     } finally {
@@ -82,30 +109,40 @@ export function LoginScreen() {
     const next = generateStrongPassword()
     setPassword(next)
     setShowPassword(true)
-    void navigator.clipboard.writeText(next).catch(() => {
-      /* clipboard may be denied — field still updated */
-    })
+    void navigator.clipboard.writeText(next).catch(() => {})
     setError('')
   }
 
   async function sendReset() {
-    const addr = resetEmail.trim() || email.trim()
-    if (!addr) {
-      setResetMessage('Enter your email address.')
+    const local = normalizeLocalPart(username)
+    if (!local && !username.trim().includes('@')) {
+      setResetMessage('Enter your username on the sign-in form above, then open “Forgot password?” again.')
       setResetStatus('error')
       return
     }
+    let authEmail: string
+    try {
+      authEmail = resolveSignInIdentifier(username)
+    } catch {
+      setResetMessage(
+        domainConfigured
+          ? 'Enter a valid username on the sign-in form first.'
+          : 'This app is not configured for username sign-in. Ask your administrator.',
+      )
+      setResetStatus('error')
+      return
+    }
+
     setResetStatus('sending')
     setResetMessage('')
     try {
       const auth = getFirebaseAuth()
-      await sendPasswordResetEmail(auth, addr, {
-        url: `${window.location.origin}${window.location.pathname}`,
-        handleCodeInApp: false,
-      })
+      // Omit custom ActionCodeSettings: wrong continueUrl is a common cause of
+      // "link expired / already used" (and some mail scanners prefetch URLs).
+      await sendPasswordResetEmail(auth, authEmail)
       setResetStatus('sent')
       setResetMessage(
-        'If an account exists for that address, Google sent a reset link. Check your inbox and spam folder.',
+        'If that account exists, a reset message was sent. Check spam/promotions and open the link once, in this browser if possible.',
       )
     } catch (err) {
       setResetStatus('error')
@@ -119,23 +156,28 @@ export function LoginScreen() {
         <h1 className="login-brand">SNM Bangalore</h1>
         <p className="login-sub">Parking</p>
         <p className="login-note login-note--muted">
-          Sign in with the email and password for your account in Firebase Authentication.
+          Sign in with your <strong>username</strong> and password. Admins create accounts in
+          Firebase Authentication — each username matches the part before{' '}
+          <strong>@</strong> in that account’s email.
         </p>
 
         <form className="login-form" onSubmit={handleSubmit}>
-          <label className="field-label" htmlFor="login-email">
-            Email
+          <label className="field-label" htmlFor="login-username">
+            Username
           </label>
           <input
-            id="login-email"
+            id="login-username"
             className="field-input"
-            name="email"
-            type="email"
-            autoComplete="email"
-            inputMode="email"
-            value={email}
+            name="username"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder={domainConfigured ? 'e.g. mandeep' : 'email or username'}
+            value={username}
             onChange={(e) => {
-              setEmail(e.target.value)
+              setUsername(e.target.value)
               setError('')
             }}
           />
@@ -170,7 +212,6 @@ export function LoginScreen() {
               type="button"
               className="link-button"
               onClick={() => {
-                setResetEmail(email)
                 setForgotOpen(true)
                 setResetStatus('idle')
                 setResetMessage('')
@@ -183,10 +224,10 @@ export function LoginScreen() {
             </button>
           </div>
           <p className="login-microcopy">
-            <strong>Forgot password?</strong> sends a secure reset link from Google/Firebase to
-            the email you enter (standard “forgot password” email — we do not email a random
-            password). Use <strong>Suggest strong password</strong> to fill and copy a strong
-            password when setting one in the reset flow or in Firebase Console.
+            <strong>Forgot password?</strong> sends a reset link to the address Firebase has on file
+            for your username — nothing is shown on screen. Some inboxes scan links; if the first
+            click fails, use <strong>Resend</strong> after a minute or open the link from a
+            computer. Mark sender as “Not spam” if messages land in spam.
           </p>
 
           {error ? <p className="login-error">{error}</p> : null}
@@ -209,20 +250,10 @@ export function LoginScreen() {
           locked={resetStatus === 'sending'}
         >
           <p className="modal-lead">
-            Enter the email for your parking app account. Firebase will send a link to choose a
-            new password.
+            Uses the <strong>username</strong> you typed on the sign-in screen. We’ll send a
+            secure reset link from Google/Firebase to the email on file for that account — your
+            username stays private here.
           </p>
-          <label className="field-label field-label--modal" htmlFor="reset-email">
-            Email
-          </label>
-          <input
-            id="reset-email"
-            className="field-input"
-            type="email"
-            autoComplete="email"
-            value={resetEmail}
-            onChange={(e) => setResetEmail(e.target.value)}
-          />
           {resetMessage ? (
             <p
               className={
@@ -235,26 +266,43 @@ export function LoginScreen() {
               {resetMessage}
             </p>
           ) : null}
-          <div className="modal-footer">
+          <div className="modal-footer modal-footer--stack">
             <button
               type="button"
-              className="btn btn-secondary"
-              onClick={() => setForgotOpen(false)}
-              disabled={resetStatus === 'sending'}
-            >
-              Close
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
+              className="btn btn-primary btn-block"
               onClick={() => void sendReset()}
-              disabled={resetStatus === 'sending' || resetStatus === 'sent'}
+              disabled={
+                resetStatus === 'sending' ||
+                resetStatus === 'sent' ||
+                (!normalizeLocalPart(username) && !username.trim().includes('@'))
+              }
             >
               {resetStatus === 'sending'
                 ? 'Sending…'
                 : resetStatus === 'sent'
-                  ? 'Email sent'
+                  ? 'Check your email'
                   : 'Send reset link'}
+            </button>
+            {resetStatus === 'sent' || resetStatus === 'error' ? (
+              <button
+                type="button"
+                className="btn btn-secondary btn-block"
+                onClick={() => {
+                  setResetStatus('idle')
+                  setResetMessage('')
+                  void sendReset()
+                }}
+              >
+                Resend link
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="btn btn-secondary btn-block"
+              onClick={() => setForgotOpen(false)}
+              disabled={resetStatus === 'sending'}
+            >
+              Close
             </button>
           </div>
         </ModalFrame>
