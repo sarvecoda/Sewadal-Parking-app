@@ -13,10 +13,12 @@ Mobile-first web client for the same Firestore data as the Android app (`your_co
 
 New staff use **Request access** (email + optional note) while **signed out**. A row is added to Firestore `access_requests`. Nothing is created in **Authentication** until the **admin** signs in and opens **Manage access** → **Approve**. The app then creates the user with a secondary Firebase client and triggers Firebase’s **password reset email** to that address so they can set a password and sign in.
 
-The admin account is fixed in code by **Firebase Auth UID** (should match `sarveshkum9999@gmail.com` on that account):
+The admin account is recognized by **Firebase Auth UID** and/or **email** (`sarveshkum9999@gmail.com`):
 
-- `web/src/adminConfig.ts` — `ADMIN_UID`
-- `web/firestore.rules` — same UID in `isParkingAdmin()` (keep them in sync)
+- `web/src/adminConfig.ts` — `ADMIN_UID` and `ADMIN_EMAIL` (either match shows **Manage access**)
+- `web/firestore.rules` — `isParkingAdmin()` checks the same UID **or** that email in the ID token
+
+If **`VITE_LEGACY_LOGIN=true`** in `.env`, the app uses the legacy demo login and **does not** attach a Firebase `User`, so **Manage access** will not appear. Use Firebase sign-in for admin (set `VITE_LEGACY_LOGIN` unset or `false`).
 
 **Staff list:** Approved users are stored under `app_users/{uid}`. **Remove** in Manage access only deletes that Firestore row; to stop sign-in completely, also delete the user under **Firebase Console → Authentication → Users** if needed.
 

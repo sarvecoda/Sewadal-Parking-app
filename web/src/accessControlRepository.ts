@@ -12,7 +12,6 @@ import {
   type Firestore,
 } from 'firebase/firestore'
 import { fetchSignInMethodsForEmail } from 'firebase/auth'
-import { ADMIN_UID } from './adminConfig'
 import { getFirebaseAuth } from './firebase'
 import { createParkingUserAndSendPasswordReset } from './secondarySignupApp'
 
@@ -97,6 +96,7 @@ export async function approveAccessRequestFirestore(
   db: Firestore,
   requestId: string,
   email: string,
+  approvedByUid: string,
 ): Promise<{ email: string; emailedReset: true }> {
   const em = emailKey(email)
   const auth = getFirebaseAuth()
@@ -117,16 +117,20 @@ export async function approveAccessRequestFirestore(
     email: em,
     accessRequestId: requestId,
     approvedAt: serverTimestamp(),
-    approvedBy: ADMIN_UID,
+    approvedBy: approvedByUid,
   })
   await batch.commit()
 
   return { email: em, emailedReset: true }
 }
 
-export async function removeAppUserRecord(db: Firestore, uid: string): Promise<void> {
-  if (uid === ADMIN_UID) {
-    throw new Error('Cannot remove the admin account from this list.')
+export async function removeAppUserRecord(
+  db: Firestore,
+  targetUid: string,
+  actingAdminUid: string,
+): Promise<void> {
+  if (targetUid === actingAdminUid) {
+    throw new Error('Cannot remove your own account from this list.')
   }
-  await deleteDoc(doc(db, APP_USERS, uid))
+  await deleteDoc(doc(db, APP_USERS, targetUid))
 }

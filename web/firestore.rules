@@ -1,10 +1,14 @@
 rules_version = '2';
 
-// Spark-friendly: no Cloud Functions. Keep ADMIN_UID in sync with web/src/adminConfig.ts
+// Spark-friendly: no Cloud Functions. Keep admin checks in sync with web/src/adminConfig.ts
 service cloud.firestore {
   match /databases/{database}/documents {
     function isParkingAdmin() {
-      return request.auth != null && request.auth.uid == 'Ayisu6zH1OgqQ4XM9ggk6y1mpxS2';
+      return request.auth != null && (
+        request.auth.uid == 'Ayisu6zH1OgqQ4XM9ggk6y1mpxS2' ||
+        (request.auth.token.email is string
+          && request.auth.token.email.lower() == 'sarveshkum9999@gmail.com')
+      );
     }
 
     // Access requests: anyone signed out can create a pending row; only admin reads/updates.

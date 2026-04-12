@@ -1,7 +1,6 @@
 import type { User } from 'firebase/auth'
 import type { Firestore } from 'firebase/firestore'
 import { useCallback, useEffect, useState } from 'react'
-import { ADMIN_UID } from '../adminConfig'
 import {
   approveAccessRequestFirestore,
   listAppUsersFirestore,
@@ -65,7 +64,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
     setLastApproval(null)
     setBusy(true)
     try {
-      const res = await approveAccessRequestFirestore(db, r.id, r.email)
+      const res = await approveAccessRequestFirestore(db, r.id, r.email, authUser.uid)
       setLastApproval({ email: res.email })
       await loadRequests()
     } catch (e) {
@@ -90,7 +89,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
   }
 
   async function removeStaff(uid: string) {
-    if (uid === ADMIN_UID) return
+    if (uid === authUser.uid) return
     if (
       !window.confirm(
         'Remove this person from the staff list in the app? They can still sign in until you delete their user under Firebase Console → Authentication → Users.',
@@ -100,7 +99,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
     setError(null)
     setBusy(true)
     try {
-      await removeAppUserRecord(db, uid)
+      await removeAppUserRecord(db, uid, authUser.uid)
       await loadUsers()
     } catch (e) {
       setError(formatFirestoreError(e))
@@ -209,7 +208,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
                   <span className="admin-access-user__email">{u.email}</span>
                   <span className="admin-access-user__uid">{u.uid}</span>
                 </div>
-                {u.uid === ADMIN_UID ? (
+                {u.uid === authUser.uid ? (
                   <span className="admin-access-user__admin-label">Admin</span>
                 ) : (
                   <button
