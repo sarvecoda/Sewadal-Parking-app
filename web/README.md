@@ -14,7 +14,7 @@ There is **no built-in username or password** in the app. You create the first (
 ### First login — what to use?
 
 1. **Authentication** → **Sign-in method** → enable **Email/Password**.
-2. **Authentication** → **Users** → **Add user** with an **email** and password.
+2. **Authentication** → **Users** → **Add user** with an **email** and password. (Firebase does not offer “username only”—always a full email; this app maps a short username to that email.)
 
 **Username sign-in (no `@` typed in the app):** the app builds the Firebase email as **`{username}@{domain}`**:
 

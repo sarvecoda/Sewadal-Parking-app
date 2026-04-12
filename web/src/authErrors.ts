@@ -22,16 +22,11 @@ export function formatAuthError(err: unknown): string {
         return 'Too many attempts. Please wait a few minutes and try again.'
       case 'auth/network-request-failed':
         return 'Network error. Check your connection and try again.'
-      case 'auth/operation-not-allowed': {
-        const pid = import.meta.env.VITE_FIREBASE_PROJECT_ID
-        const url = pid
-          ? `https://console.firebase.google.com/project/${pid}/authentication/providers`
-          : 'https://console.firebase.google.com/'
-        return `Email/password is disabled for this Firebase project. Open the link below, enable “Email/Password”, then Save: ${url}`
-      }
+      case 'auth/operation-not-allowed':
+        return 'Email/password sign-in is turned off for this project. An administrator needs to enable “Email/Password” under Firebase Authentication → Sign-in method.'
       case 'auth/expired-action-code':
       case 'auth/invalid-action-code':
-        return 'This reset link was already used or has expired. Inbox “link preview” or security scanners sometimes open the link first — request a new reset from the sign-in page, then open the link once from your phone or a desktop mail app. For a more reliable flow, set the password-reset email template action URL to this app’s URL (see web/README.md).'
+        return 'This reset link was already used or has expired. Inbox previews sometimes open the link first—request a new reset, then open the link once from your mail app. Ask an admin to point the password-reset email “action URL” at this app’s address if this keeps happening.'
       default:
         break
     }
@@ -43,7 +38,7 @@ export function formatAuthError(err: unknown): string {
       m.includes('already been used') ||
       m.includes('invalid action code')
     ) {
-      return 'This reset link was already used or has expired. Request a new reset from the sign-in page and open the link once without mail previews. See web/README.md to point reset emails at this app.'
+      return 'This reset link was already used or has expired. Request a new reset and open the link once without mail previews.'
     }
     return err.message
   }

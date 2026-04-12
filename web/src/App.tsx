@@ -57,8 +57,7 @@ export default function App() {
         </p>
         <p className="setup-muted">
           For sign-in: enable <strong>Authentication → Sign-in method → Email/Password</strong>, add
-          users under <strong>Authentication → Users</strong> (see <code>web/README.md</code> for
-          username → email mapping).
+          users under <strong>Authentication → Users</strong> (email + password for this app).
         </p>
       </div>
     )

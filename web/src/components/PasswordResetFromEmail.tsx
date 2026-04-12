@@ -7,7 +7,7 @@ type Phase = 'checking' | 'form' | 'invalid'
 
 /**
  * Handles Firebase password-reset links when the email template action URL
- * points at this app (see web/README.md). Query: ?mode=resetPassword&oobCode=...
+ * points at this app. Query: ?mode=resetPassword&oobCode=...
  */
 export function PasswordResetFromEmail({
   oobCode,

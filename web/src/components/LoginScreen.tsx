@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import {
   browserLocalPersistence,
+  fetchSignInMethodsForEmail,
   setPersistence,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -38,7 +39,16 @@ function generateStrongPassword(length = 18): string {
 
 const fixedResetEmail = import.meta.env.VITE_PASSWORD_RESET_EMAIL?.trim() ?? ''
 
-/** Starter form defaults; create this user in Firebase Auth (see README). */
+function maskEmailForUi(email: string): string {
+  const at = email.indexOf('@')
+  if (at <= 0) return email
+  const local = email.slice(0, at)
+  const domain = email.slice(at + 1)
+  const head = local.slice(0, Math.min(2, local.length))
+  return `${head}•••@${domain}`
+}
+
+/** Starter form defaults; Firebase user must use the same email this app resolves to. */
 const STARTER_USERNAME = 'snmparking'
 const STARTER_PASSWORD = 'nirankar'
 
@@ -141,10 +151,22 @@ export function LoginScreen() {
       }
 
       const auth = getFirebaseAuth()
+
+      if (!fixedResetEmail) {
+        const methods = await fetchSignInMethodsForEmail(auth, target)
+        if (methods.length > 0 && !methods.includes('password')) {
+          setResetFeedback('err')
+          setResetNote(
+            'That address is not set up for a parking password (for example it may be Google-only). Use an account that has Email/Password in Firebase, or type the full email you were given for this app.',
+          )
+          return
+        }
+      }
+
       await sendPasswordResetEmail(auth, target)
       setResetFeedback('ok')
       setResetNote(
-        'If that account exists in Firebase, a password reset message was sent. Check inbox and spam, then open the link once.',
+        `If an Email/Password account exists for ${maskEmailForUi(target)}, Firebase will send a message there—check inbox and spam and open the link once.`,
       )
     } catch (err) {
       setResetFeedback('err')
@@ -160,8 +182,10 @@ export function LoginScreen() {
         <h1 className="login-brand">SNM Bangalore</h1>
         <p className="login-sub">Parking</p>
         <p className="login-note login-note--muted">
-          Sign in with your <strong>username</strong> and password. Create accounts in Firebase
-          Console → Authentication → Users (see README).
+          Firebase always stores a <strong>full email</strong> for each user (you cannot add only a
+          short name there). Here you usually type just the part <strong>before @</strong>; the app
+          fills in the rest to match your Firebase account. Or paste the whole email in the username
+          field.
         </p>
 
         <form className="login-form" onSubmit={handleSubmit}>
@@ -235,42 +259,12 @@ export function LoginScreen() {
               }
               role={resetFeedback === 'err' ? 'alert' : 'status'}
             >
-              {resetFeedback === 'err' && resetNote.includes('http') ? (
-                <>
-                  {resetNote.split(/(https?:\/\/[^\s]+)/).map((part, i) =>
-                    part.startsWith('http') ? (
-                      <a key={i} href={part} className="login-inline-link" target="_blank" rel="noreferrer">
-                        Open Firebase Authentication settings
-                      </a>
-                    ) : (
-                      <span key={i}>{part}</span>
-                    ),
-                  )}
-                </>
-              ) : (
-                resetNote
-              )}
+              {resetNote}
             </p>
           ) : null}
 
           {error ? (
-            <p className="login-error">
-              {error.includes('http') ? (
-                <>
-                  {error.split(/(https?:\/\/[^\s]+)/).map((part, i) =>
-                    part.startsWith('http') ? (
-                      <a key={i} href={part} className="login-inline-link" target="_blank" rel="noreferrer">
-                        Open Firebase sign-in settings
-                      </a>
-                    ) : (
-                      <span key={i}>{part}</span>
-                    ),
-                  )}
-                </>
-              ) : (
-                error
-              )}
-            </p>
+            <p className="login-error">{error}</p>
           ) : null}
 
           <button type="submit" className="btn btn-login" disabled={busy}>
