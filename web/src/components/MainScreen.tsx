@@ -620,7 +620,9 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
         </ModalFrame>
       ) : null}
     </div>
-    {adminOpen ? <AdminAccessModal onClose={() => setAdminOpen(false)} /> : null}
+    {adminOpen && authUser ? (
+      <AdminAccessModal db={db} authUser={authUser} onClose={() => setAdminOpen(false)} />
+    ) : null}
     </>
   )
 }

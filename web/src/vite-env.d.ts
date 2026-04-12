@@ -8,8 +8,6 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_MESSAGING_SENDER_ID: string
   readonly VITE_FIREBASE_APP_ID: string
   /** Set to `"true"` to use the old fixed demo login instead of Firebase Email/Password. */
-  /** Firebase callable region (default `asia-south1`). Must match Cloud Functions deployment. */
-  readonly VITE_FUNCTIONS_REGION?: string
   readonly VITE_LEGACY_LOGIN?: string
   /**
    * Optional domain for username-only sign-in (e.g. `park.yourorg.com`). If omitted, the app uses

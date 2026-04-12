@@ -9,30 +9,27 @@ Mobile-first web client for the same Firestore data as the Android app (`your_co
 
 ## Sign-in (Firebase Authentication)
 
-### Admin approval (default)
+### Admin approval (Spark / no paid Cloud Functions)
 
-New staff use **Request access** (email + optional note) while **signed out**. Nothing is created in Authentication until the **admin** signs in and opens **Manage access** → approves the request. The admin then copies a **one-time password-reset link** and shares it with the new user (e.g. WhatsApp). That user opens the link, sets a password, and signs in on **Sign in**.
+New staff use **Request access** (email + optional note) while **signed out**. A row is added to Firestore `access_requests`. Nothing is created in **Authentication** until the **admin** signs in and opens **Manage access** → **Approve**. The app then creates the user with a secondary Firebase client and triggers Firebase’s **password reset email** to that address so they can set a password and sign in.
 
-The admin account is fixed in code by **Firebase Auth UID** (and should match `sarveshkum9999@gmail.com` on that account):
+The admin account is fixed in code by **Firebase Auth UID** (should match `sarveshkum9999@gmail.com` on that account):
 
 - `web/src/adminConfig.ts` — `ADMIN_UID`
-- `web/functions/src/index.ts` — same `ADMIN_UID` constant
+- `web/firestore.rules` — same UID in `isParkingAdmin()` (keep them in sync)
 
-If you ever change admin user, update **both** files and redeploy **hosting + functions**.
+**Staff list:** Approved users are stored under `app_users/{uid}`. **Remove** in Manage access only deletes that Firestore row; to stop sign-in completely, also delete the user under **Firebase Console → Authentication → Users** if needed.
 
-### Cloud Functions (required)
+### Firestore rules (required for Request access)
 
-Access requests and approvals use **callable Cloud Functions** in `web/functions/` (Node 20). Deploy them with Hosting:
+`web/firestore.rules` is deployed with **`npm run deploy`** (Hosting + rules). It allows:
 
-```bash
-cd web && npm run deploy
-```
+- unauthenticated **create** on `access_requests` (pending requests only),
+- **admin-only** read/update on `access_requests`,
+- **admin-only** read/write on `app_users`,
+- any signed-in user read/write on `your_collection` / `your_collection1` (same as before).
 
-That runs `npm run build` in `web/functions/` then **hosting** first, then **functions** (two deploy steps so Hosting still updates if Functions fail, e.g. before Blaze upgrade).
-
-**Billing:** Cloud Functions for Firebase usually require the **Blaze** plan on the Firebase project. If deploy fails, upgrade billing in the Firebase console, then run `npm run deploy` again. Until then you can ship **only** the web app with `npm run deploy:hosting` (approval flows will not work until Functions are deployed).
-
-**Region:** Functions use **`asia-south1`**. The web app uses `getFunctions(..., 'asia-south1')` by default; override with **`VITE_FUNCTIONS_REGION`** in `web/.env` if you change the function region.
+If you already have custom rules in the console, **merge** these paths into your existing rules instead of overwriting blindly.
 
 ### First login — what to use?
 
@@ -83,7 +80,7 @@ This project deploys the **built** `dist/` folder to **Firebase Hosting** in pro
 1. Install deps: `npm install`
 2. Ensure `web/.env` exists so `npm run build` embeds your Firebase config (`.env` is not committed).
 3. Log in once: `npx firebase login` (use the GitHub/Google account that owns this Firebase project).
-4. Deploy (Hosting + Cloud Functions): `npm run deploy` from the `web/` folder
+4. Deploy Hosting + Firestore rules: `npm run deploy` from the `web/` folder
 
 After the first deploy, the app is available at:
 
@@ -94,7 +91,7 @@ In [Firebase Console](https://console.firebase.google.com/) → your project →
 
 ### Firestore / API access from the hosted URL
 
-- In **Firestore → Rules**, allow access from this web client the same way you do for Android (or tighten with auth later).
+- Deploy `web/firestore.rules` with `npm run deploy` (or paste equivalent rules in the console). Android can keep using the same collections if rules match.
 - If your **Google Cloud API key** is restricted by HTTP referrer, add  
   `https://sns-parking-app-blr-d40c7.web.app/*` (and `firebaseapp.com` if needed).
 
@@ -104,5 +101,5 @@ In [Firebase Console](https://console.firebase.google.com/) → your project →
 | -------------- | -------------------------------- |
 | `npm run dev`  | Local development                |
 | `npm run build`| Production build → `dist/`       |
-| `npm run deploy` | Build web + functions, then `firebase deploy --only hosting` then `--only functions` |
-| `npm run deploy:hosting` | Build web only, then `firebase deploy --only hosting` (no Cloud Functions) |
+| `npm run deploy` | Build web, then `firebase deploy --only hosting,firestore` |
+| `npm run deploy:hosting` | Build web, then `firebase deploy --only hosting` only (skips rules deploy) |

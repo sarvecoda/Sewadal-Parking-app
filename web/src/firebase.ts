@@ -1,7 +1,6 @@
 import { getApps, initializeApp, type FirebaseApp } from 'firebase/app'
 import { getAuth, signOut, type Auth } from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
-import { getFunctions, type Functions } from 'firebase/functions'
 
 function readConfig() {
   return {
@@ -12,6 +11,11 @@ function readConfig() {
     messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string,
     appId: import.meta.env.VITE_FIREBASE_APP_ID as string,
   }
+}
+
+/** Same Web config as the primary app (for the isolated signup helper app). */
+export function getFirebaseWebConfig() {
+  return readConfig()
 }
 
 export function isFirebaseConfigured(): boolean {
@@ -25,7 +29,6 @@ export function isFirebaseConfigured(): boolean {
 let app: FirebaseApp | null = null
 let db: Firestore | null = null
 let auth: Auth | null = null
-let functions: Functions | null = null
 
 export function getFirestoreDb(): Firestore {
   if (db) return db
@@ -52,16 +55,5 @@ export function getFirebaseAuth(): Auth {
 
 export async function signOutUser(): Promise<void> {
   await signOut(getFirebaseAuth())
-}
-
-/** Cloud Functions (same project). Region must match `functions/src/index.ts` (`setGlobalOptions`). */
-export function getFirebaseFunctions(): Functions {
-  if (functions) return functions
-  if (!getApps().length) {
-    getFirestoreDb()
-  }
-  const region = import.meta.env.VITE_FUNCTIONS_REGION?.trim() || 'asia-south1'
-  functions = getFunctions(getApps()[0]!, region)
-  return functions
 }
 

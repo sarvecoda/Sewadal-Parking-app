@@ -6,14 +6,14 @@ import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
 } from 'firebase/auth'
-import { httpsCallable } from 'firebase/functions'
 import { formatAuthError } from '../authErrors'
 import {
   isEmailDomainConfigured,
   resolveSignInIdentifier,
 } from '../authIdentity'
-import { formatCallableError } from '../callableErrors'
-import { getFirebaseAuth, getFirebaseFunctions } from '../firebase'
+import { submitAccessRequestFirestore } from '../accessControlRepository'
+import { getFirebaseAuth, getFirestoreDb } from '../firebase'
+import { formatFirestoreError } from '../vehicleRepository'
 
 function generateStrongPassword(length = 18): string {
   const lower = 'abcdefghjkmnpqrstuvwxyz'
@@ -59,7 +59,7 @@ type AuthMode = 'signIn' | 'requestAccess'
 
 /**
  * Sign in: email or short username + password.
- * Request access: sends a pending request; admin approves via Cloud Function, then user sets password via link.
+ * Request access: writes a Firestore pending request (no paid backend). Admin approves in-app.
  */
 export function LoginScreen() {
   const [authMode, setAuthMode] = useState<AuthMode>('signIn')
@@ -146,16 +146,13 @@ export function LoginScreen() {
     }
     setBusy(true)
     try {
-      const submitAccessRequest = httpsCallable(getFirebaseFunctions(), 'submitAccessRequest')
-      await submitAccessRequest({
-        email,
-        note: requestNote.trim().slice(0, 800) || undefined,
-      })
+      const db = getFirestoreDb()
+      await submitAccessRequestFirestore(db, email, requestNote)
       setRequestOk(
-        'Request sent. When the admin approves it, they will share a link so you can set your password—then sign in here.',
+        'Request sent. When the admin approves it, Firebase will email you a link to set your password—then sign in here.',
       )
     } catch (err) {
-      setError(formatCallableError(err))
+      setError(formatFirestoreError(err))
     } finally {
       setBusy(false)
     }

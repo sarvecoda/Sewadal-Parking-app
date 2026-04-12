@@ -1,58 +1,46 @@
-import { httpsCallable } from 'firebase/functions'
+import type { User } from 'firebase/auth'
+import type { Firestore } from 'firebase/firestore'
 import { useCallback, useEffect, useState } from 'react'
 import { ADMIN_UID } from '../adminConfig'
-import { formatCallableError } from '../callableErrors'
-import { getFirebaseFunctions } from '../firebase'
+import {
+  approveAccessRequestFirestore,
+  listAppUsersFirestore,
+  listPendingAccessRequests,
+  rejectAccessRequestFirestore,
+  removeAppUserRecord,
+  type AccessRequestRow,
+  type AppUserRow,
+} from '../accessControlRepository'
+import { formatFirestoreError } from '../vehicleRepository'
 import { ModalFrame } from './ModalFrame'
-
-type AccessRequest = {
-  id: string
-  email: string
-  note: string | null
-  createdAt: number | null
-}
-
-type AuthUserRow = {
-  uid: string
-  email: string | null
-  disabled: boolean
-  providers: string[]
-}
 
 type Tab = 'requests' | 'users'
 
 type Props = {
+  db: Firestore
+  authUser: User
   onClose: () => void
 }
 
-export function AdminAccessModal({ onClose }: Props) {
+export function AdminAccessModal({ db, authUser, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('requests')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [requests, setRequests] = useState<AccessRequest[]>([])
-  const [users, setUsers] = useState<AuthUserRow[]>([])
-  const [lastApproval, setLastApproval] = useState<{
-    email: string
-    passwordResetLink: string
-  } | null>(null)
+  const [requests, setRequests] = useState<AccessRequestRow[]>([])
+  const [appUsers, setAppUsers] = useState<AppUserRow[]>([])
+  const [lastApproval, setLastApproval] = useState<{ email: string } | null>(null)
 
   const loadRequests = useCallback(async () => {
     setError(null)
-    const fn = getFirebaseFunctions()
-    const listAccessRequests = httpsCallable(fn, 'listAccessRequests')
-    const res = await listAccessRequests({})
-    const data = res.data as { requests: AccessRequest[] }
-    setRequests(data.requests ?? [])
-  }, [])
+    const rows = await listPendingAccessRequests(db)
+    setRequests(rows)
+  }, [db])
 
   const loadUsers = useCallback(async () => {
     setError(null)
-    const fn = getFirebaseFunctions()
-    const listAuthUsers = httpsCallable(fn, 'listAuthUsers')
-    const res = await listAuthUsers({})
-    const data = res.data as { users: AuthUserRow[] }
-    setUsers(data.users ?? [])
-  }, [])
+    const rows = await listAppUsersFirestore(db)
+    setAppUsers(rows)
+  }, [db])
 
   useEffect(() => {
     let cancelled = false
@@ -62,7 +50,7 @@ export function AdminAccessModal({ onClose }: Props) {
         if (tab === 'requests') await loadRequests()
         else await loadUsers()
       } catch (e) {
-        if (!cancelled) setError(formatCallableError(e))
+        if (!cancelled) setError(formatFirestoreError(e))
       } finally {
         if (!cancelled) setBusy(false)
       }
@@ -72,19 +60,16 @@ export function AdminAccessModal({ onClose }: Props) {
     }
   }, [tab, loadRequests, loadUsers])
 
-  async function approve(id: string) {
+  async function approve(r: AccessRequestRow) {
     setError(null)
     setLastApproval(null)
     setBusy(true)
     try {
-      const fn = getFirebaseFunctions()
-      const approveAccessRequest = httpsCallable(fn, 'approveAccessRequest')
-      const res = await approveAccessRequest({ requestId: id })
-      const data = res.data as { email: string; passwordResetLink: string }
-      setLastApproval({ email: data.email, passwordResetLink: data.passwordResetLink })
+      const res = await approveAccessRequestFirestore(db, r.id, r.email)
+      setLastApproval({ email: res.email })
       await loadRequests()
     } catch (e) {
-      setError(formatCallableError(e))
+      setError(formatFirestoreError(e))
     } finally {
       setBusy(false)
     }
@@ -95,33 +80,39 @@ export function AdminAccessModal({ onClose }: Props) {
     setError(null)
     setBusy(true)
     try {
-      const fn = getFirebaseFunctions()
-      const rejectAccessRequest = httpsCallable(fn, 'rejectAccessRequest')
-      await rejectAccessRequest({ requestId: id })
+      await rejectAccessRequestFirestore(db, id)
       await loadRequests()
     } catch (e) {
-      setError(formatCallableError(e))
+      setError(formatFirestoreError(e))
     } finally {
       setBusy(false)
     }
   }
 
-  async function removeUser(uid: string) {
+  async function removeStaff(uid: string) {
     if (uid === ADMIN_UID) return
-    if (!window.confirm('Permanently delete this user from Authentication?')) return
+    if (
+      !window.confirm(
+        'Remove this person from the staff list in the app? They can still sign in until you delete their user under Firebase Console → Authentication → Users.',
+      )
+    )
+      return
     setError(null)
     setBusy(true)
     try {
-      const fn = getFirebaseFunctions()
-      const deleteAuthUser = httpsCallable(fn, 'deleteAuthUser')
-      await deleteAuthUser({ uid })
+      await removeAppUserRecord(db, uid)
       await loadUsers()
     } catch (e) {
-      setError(formatCallableError(e))
+      setError(formatFirestoreError(e))
     } finally {
       setBusy(false)
     }
   }
+
+  const adminRow: AppUserRow = { uid: authUser.uid, email: authUser.email ?? '(admin)' }
+  const userRowsForList = appUsers.some((u) => u.uid === adminRow.uid)
+    ? appUsers
+    : [adminRow, ...appUsers]
 
   return (
     <ModalFrame
@@ -147,7 +138,7 @@ export function AdminAccessModal({ onClose }: Props) {
           onClick={() => setTab('users')}
           disabled={busy}
         >
-          All users
+          Staff (approved)
         </button>
       </div>
 
@@ -160,23 +151,9 @@ export function AdminAccessModal({ onClose }: Props) {
       {lastApproval ? (
         <div className="admin-access-banner admin-access-banner--ok">
           <p>
-            <strong>{lastApproval.email}</strong> was approved. Send them this one-time link so they
-            can set their password, then sign in:
+            <strong>{lastApproval.email}</strong> is set up. Firebase should email them a password
+            reset link—ask them to check inbox and spam, then sign in on this app.
           </p>
-          <div className="admin-access-link-row">
-            <input
-              className="field-input admin-access-link-input"
-              readOnly
-              value={lastApproval.passwordResetLink}
-            />
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => void navigator.clipboard.writeText(lastApproval.passwordResetLink)}
-            >
-              Copy link
-            </button>
-          </div>
         </div>
       ) : null}
 
@@ -201,7 +178,7 @@ export function AdminAccessModal({ onClose }: Props) {
                       type="button"
                       className="btn btn-primary"
                       disabled={busy}
-                      onClick={() => void approve(r.id)}
+                      onClick={() => void approve(r)}
                     >
                       Approve
                     </button>
@@ -222,16 +199,15 @@ export function AdminAccessModal({ onClose }: Props) {
       ) : (
         <div className="admin-access-list">
           <p className="login-note login-note--muted">
-            Users in Firebase Authentication. You cannot delete your own admin account.
+            People approved through this app. To fully block sign-in, also remove the user in
+            Firebase Authentication.
           </p>
           <ul className="admin-access-user-list">
-            {users.map((u) => (
+            {userRowsForList.map((u) => (
               <li key={u.uid} className="admin-access-user">
                 <div className="admin-access-user__meta">
-                  <span className="admin-access-user__email">{u.email ?? '(no email)'}</span>
+                  <span className="admin-access-user__email">{u.email}</span>
                   <span className="admin-access-user__uid">{u.uid}</span>
-                  <span className="admin-access-user__prov">{u.providers.join(', ') || '—'}</span>
-                  {u.disabled ? <span className="admin-access-user__badge">Disabled</span> : null}
                 </div>
                 {u.uid === ADMIN_UID ? (
                   <span className="admin-access-user__admin-label">Admin</span>
@@ -240,9 +216,9 @@ export function AdminAccessModal({ onClose }: Props) {
                     type="button"
                     className="btn btn-danger"
                     disabled={busy}
-                    onClick={() => void removeUser(u.uid)}
+                    onClick={() => void removeStaff(u.uid)}
                   >
-                    Delete
+                    Remove
                   </button>
                 )}
               </li>
