@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { User } from 'firebase/auth'
 import { onAuthStateChanged } from 'firebase/auth'
+import { doc, getDoc } from 'firebase/firestore'
+import { isAppAdmin } from './adminConfig'
 import { LegacyLoginScreen } from './components/LegacyLoginScreen'
 import { LoginScreen } from './components/LoginScreen'
 import { MainScreen } from './components/MainScreen'
 import { PasswordResetFromEmail } from './components/PasswordResetFromEmail'
-import { getFirebaseAuth, getFirestoreDb, isFirebaseConfigured } from './firebase'
+import { getFirebaseAuth, getFirestoreDb, isFirebaseConfigured, signOutUser } from './firebase'
 
 function readPasswordResetOobFromUrl(): string | null {
   if (typeof window === 'undefined') return null
@@ -38,11 +40,33 @@ export default function App() {
     legacyLogin ? null : undefined,
   )
 
+  /** null = not checked yet; only used when signed in and not admin. */
+  const [staffApproved, setStaffApproved] = useState<boolean | null>(null)
+
   useEffect(() => {
     if (!firebaseReady || legacyLogin || !db) return
     const auth = getFirebaseAuth()
     return onAuthStateChanged(auth, setAuthUser)
   }, [firebaseReady, legacyLogin, db])
+
+  useEffect(() => {
+    if (!firebaseReady || legacyLogin || !db || !authUser) {
+      if (!authUser) setStaffApproved(null)
+      return
+    }
+    if (isAppAdmin(authUser)) {
+      setStaffApproved(true)
+      return
+    }
+    setStaffApproved(null)
+    let cancelled = false
+    void getDoc(doc(db, 'app_users', authUser.uid)).then((snap) => {
+      if (!cancelled) setStaffApproved(snap.exists())
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [firebaseReady, legacyLogin, db, authUser])
 
   if (!firebaseReady) {
     return (
@@ -102,6 +126,34 @@ export default function App() {
 
   if (!authUser) {
     return <LoginScreen />
+  }
+
+  if (!isAppAdmin(authUser) && staffApproved === null) {
+    return (
+      <div className="login-shell">
+        <div className="login-card login-card--narrow">
+          <p className="login-note login-note--muted">Checking access…</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAppAdmin(authUser) && staffApproved === false) {
+    return (
+      <div className="login-shell">
+        <div className="login-card">
+          <h1 className="login-brand">SNM Bangalore</h1>
+          <p className="login-sub">Parking</p>
+          <p className="login-note login-note--muted">
+            Your request is still <strong>pending</strong>. When an admin approves it, sign in again
+            with the same email and password you chose when you sent the request.
+          </p>
+          <button type="button" className="btn btn-login" onClick={() => void signOutUser()}>
+            Sign out
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return <MainScreen db={db} authUser={authUser} />

@@ -27,7 +27,10 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [requests, setRequests] = useState<AccessRequestRow[]>([])
   const [appUsers, setAppUsers] = useState<AppUserRow[]>([])
-  const [lastApproval, setLastApproval] = useState<{ email: string } | null>(null)
+  const [lastApproval, setLastApproval] = useState<{
+    email: string
+    emailedReset: boolean
+  } | null>(null)
 
   const loadRequests = useCallback(async () => {
     setError(null)
@@ -65,7 +68,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
     setBusy(true)
     try {
       const res = await approveAccessRequestFirestore(db, r.id, r.email, authUser.uid)
-      setLastApproval({ email: res.email })
+      setLastApproval({ email: res.email, emailedReset: res.emailedReset })
       await loadRequests()
     } catch (e) {
       setError(formatFirestoreError(e))
@@ -92,7 +95,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
     if (uid === authUser.uid) return
     if (
       !window.confirm(
-        'Remove this person from the staff list in the app? They can still sign in until you delete their user under Firebase Console → Authentication → Users.',
+        'Remove this person from the staff list? They will lose access to parking data here. To delete their login entirely, remove them under Firebase Console → Authentication → Users (the free web app cannot do that automatically).',
       )
     )
       return
@@ -150,8 +153,19 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
       {lastApproval ? (
         <div className="admin-access-banner admin-access-banner--ok">
           <p>
-            <strong>{lastApproval.email}</strong> is set up. Firebase should email them a password
-            reset link—ask them to check inbox and spam, then sign in on this app.
+            <strong>{lastApproval.email}</strong> is approved.
+            {lastApproval.emailedReset ? (
+              <>
+                {' '}
+                Firebase should email them a password reset link—ask them to check inbox and spam,
+                then sign in on this app.
+              </>
+            ) : (
+              <>
+                {' '}
+                They can sign in with the password they chose when sending the access request.
+              </>
+            )}
           </p>
         </div>
       ) : null}
@@ -198,8 +212,8 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
       ) : (
         <div className="admin-access-list">
           <p className="login-note login-note--muted">
-            People approved through this app. To fully block sign-in, also remove the user in
-            Firebase Authentication.
+            People approved through this app. Remove clears their staff access in Firestore only; to
+            delete their Auth user as well, use Firebase Console → Authentication → Users.
           </p>
           <ul className="admin-access-user-list">
             {userRowsForList.map((u) => (

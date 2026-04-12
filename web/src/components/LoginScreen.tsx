@@ -66,8 +66,11 @@ export function LoginScreen() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [requestEmail, setRequestEmail] = useState('')
+  const [requestPassword, setRequestPassword] = useState('')
+  const [requestPasswordConfirm, setRequestPasswordConfirm] = useState('')
   const [requestNote, setRequestNote] = useState('')
   const [requestOk, setRequestOk] = useState('')
+  const [requestShowPassword, setRequestShowPassword] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -96,6 +99,9 @@ export function LoginScreen() {
     setAuthMode(next)
     setError('')
     setRequestOk('')
+    setRequestPassword('')
+    setRequestPasswordConfirm('')
+    setRequestShowPassword(false)
     setResetFeedback(null)
     setResetNote('')
   }
@@ -135,6 +141,13 @@ export function LoginScreen() {
     }
   }
 
+  function formatRequestSubmitError(err: unknown): string {
+    const code =
+      err && typeof err === 'object' && 'code' in err ? String((err as { code?: string }).code) : ''
+    if (code.startsWith('auth/')) return formatAuthError(err)
+    return formatFirestoreError(err)
+  }
+
   async function handleRequestAccess(e: FormEvent) {
     e.preventDefault()
     setError('')
@@ -144,15 +157,25 @@ export function LoginScreen() {
       setError('Enter a valid email (include @ and domain).')
       return
     }
+    if (requestPassword.length < 6) {
+      setError('Password must be at least 6 characters (Firebase minimum).')
+      return
+    }
+    if (requestPassword !== requestPasswordConfirm) {
+      setError('Password and confirmation do not match.')
+      return
+    }
     setBusy(true)
     try {
       const db = getFirestoreDb()
-      await submitAccessRequestFirestore(db, email, requestNote)
+      await submitAccessRequestFirestore(db, email, requestNote, requestPassword)
+      setRequestPassword('')
+      setRequestPasswordConfirm('')
       setRequestOk(
-        'Request sent. When the admin approves it, Firebase will email you a link to set your password—then sign in here.',
+        'Request sent. After the admin approves it, sign in here with this email and the password you just chose.',
       )
     } catch (err) {
-      setError(formatFirestoreError(err))
+      setError(formatRequestSubmitError(err))
     } finally {
       setBusy(false)
     }
@@ -334,9 +357,10 @@ export function LoginScreen() {
         ) : (
           <>
             <p className="login-note login-note--muted">
-              New staff: enter your <strong>work email</strong> and an optional note. Your account is
-              created only after the <strong>admin</strong> approves the request. You will then get
-              an email to choose your password.
+              New staff: choose a <strong>password</strong> you will use to sign in after approval,
+              plus your <strong>work email</strong> and an optional note. Your Firebase account is
+              created now, but parking data stays locked until an <strong>admin</strong> approves
+              the request.
             </p>
             <form className="login-form" onSubmit={(e) => void handleRequestAccess(e)}>
               <label className="field-label" htmlFor="request-email">
@@ -355,6 +379,49 @@ export function LoginScreen() {
                 value={requestEmail}
                 onChange={(e) => {
                   setRequestEmail(e.target.value)
+                  setError('')
+                  setRequestOk('')
+                }}
+              />
+
+              <div className="login-password-row">
+                <label className="field-label login-password-label" htmlFor="request-password">
+                  Password (for after approval)
+                </label>
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => setRequestShowPassword((v) => !v)}
+                >
+                  {requestShowPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <input
+                id="request-password"
+                className="field-input"
+                name="new-password"
+                type={requestShowPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                value={requestPassword}
+                onChange={(e) => {
+                  setRequestPassword(e.target.value)
+                  setError('')
+                  setRequestOk('')
+                }}
+              />
+
+              <label className="field-label" htmlFor="request-password-confirm">
+                Confirm password
+              </label>
+              <input
+                id="request-password-confirm"
+                className="field-input"
+                name="new-password-confirm"
+                type={requestShowPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                value={requestPasswordConfirm}
+                onChange={(e) => {
+                  setRequestPasswordConfirm(e.target.value)
                   setError('')
                   setRequestOk('')
                 }}

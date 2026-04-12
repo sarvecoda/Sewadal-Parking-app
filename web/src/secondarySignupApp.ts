@@ -19,6 +19,19 @@ function getSignupHelperApp(): FirebaseApp {
   return initializeApp(getFirebaseWebConfig(), HELPER_APP_NAME)
 }
 
+/** Creates Email/Password user with the password they chose (helper app so admin session is untouched). */
+export async function createParkingUserWithChosenPassword(
+  email: string,
+  password: string,
+): Promise<string> {
+  const helperApp = getSignupHelperApp()
+  const helperAuth = getAuth(helperApp)
+  const { user } = await createUserWithEmailAndPassword(helperAuth, email, password)
+  const uid = user.uid
+  await signOut(helperAuth)
+  return uid
+}
+
 /** Creates Email/Password user and asks Firebase to email them a password reset link. */
 export async function createParkingUserAndSendPasswordReset(email: string): Promise<string> {
   const helperApp = getSignupHelperApp()

@@ -11,10 +11,17 @@ service cloud.firestore {
       );
     }
 
-    // Access requests: any client may create a validated pending row (signed-in or not — avoids
-    // "permission denied" when a stale session exists). Only admin reads/updates.
+    function isApprovedStaff() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/app_users/$(request.auth.uid));
+    }
+
+    // Access requests: creator must be signed in; requestUid must match their Auth uid (password
+    // was set at signup on the same project). Only admin reads/updates.
     match /access_requests/{id} {
-      allow create: if request.resource.data.keys().hasOnly(['email', 'note', 'status', 'createdAt'])
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['email', 'note', 'status', 'createdAt', 'requestUid'])
+        && request.resource.data.requestUid == request.auth.uid
         && request.resource.data.email is string
         && request.resource.data.email.size() >= 5
         && request.resource.data.email.size() <= 120
@@ -32,13 +39,13 @@ service cloud.firestore {
       allow create, update, delete: if isParkingAdmin();
     }
 
-    // Vehicle lists (same as Android). Any signed-in user — tighten later if needed.
+    // Vehicle lists: admin or approved staff only (pending-request accounts cannot read/write).
     match /your_collection/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isParkingAdmin() || isApprovedStaff();
     }
 
     match /your_collection1/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isParkingAdmin() || isApprovedStaff();
     }
   }
 }

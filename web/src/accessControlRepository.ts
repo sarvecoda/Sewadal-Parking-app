@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   query,
   serverTimestamp,
@@ -11,9 +12,12 @@ import {
   writeBatch,
   type Firestore,
 } from 'firebase/firestore'
-import { fetchSignInMethodsForEmail } from 'firebase/auth'
+import { fetchSignInMethodsForEmail, signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import { getFirebaseAuth } from './firebase'
-import { createParkingUserAndSendPasswordReset } from './secondarySignupApp'
+import {
+  createParkingUserAndSendPasswordReset,
+  createParkingUserWithChosenPassword,
+} from './secondarySignupApp'
 
 const ACCESS_REQUESTS = 'access_requests'
 const APP_USERS = 'app_users'
@@ -38,20 +42,34 @@ export async function submitAccessRequestFirestore(
   db: Firestore,
   email: string,
   note: string,
+  password: string,
 ): Promise<void> {
   const em = emailKey(email)
-  const snap = await getDocs(query(collection(db, ACCESS_REQUESTS), where('email', '==', em)))
-  const pending = snap.docs.some((d) => (d.data() as { status?: string }).status === 'pending')
-  if (pending) {
-    throw new Error('A pending request for this email already exists.')
+  const mainAuth = getFirebaseAuth()
+  const existing = await fetchSignInMethodsForEmail(mainAuth, em)
+  if (existing.length > 0) {
+    throw new Error(
+      'That email already has a Firebase account. Try signing in, or use Forgot password on the Sign in tab.',
+    )
   }
 
-  await addDoc(collection(db, ACCESS_REQUESTS), {
-    email: em,
-    note: note.trim() ? note.trim().slice(0, 800) : null,
-    status: 'pending',
-    createdAt: serverTimestamp(),
-  })
+  await createParkingUserWithChosenPassword(em, password)
+
+  try {
+    await signInWithEmailAndPassword(mainAuth, em, password)
+    const uid = mainAuth.currentUser?.uid
+    if (!uid) throw new Error('Sign-in did not complete. Try again.')
+
+    await addDoc(collection(db, ACCESS_REQUESTS), {
+      email: em,
+      note: note.trim() ? note.trim().slice(0, 800) : null,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+      requestUid: uid,
+    })
+  } finally {
+    await signOut(mainAuth)
+  }
 }
 
 export async function listPendingAccessRequests(db: Firestore): Promise<AccessRequestRow[]> {
@@ -97,9 +115,52 @@ export async function approveAccessRequestFirestore(
   requestId: string,
   email: string,
   approvedByUid: string,
-): Promise<{ email: string; emailedReset: true }> {
+): Promise<{ email: string; emailedReset: boolean }> {
   const em = emailKey(email)
   const auth = getFirebaseAuth()
+  const reqSnap = await getDoc(doc(db, ACCESS_REQUESTS, requestId))
+  if (!reqSnap.exists()) {
+    throw new Error('That access request was not found.')
+  }
+  const reqData = reqSnap.data() as {
+    email?: string
+    requestUid?: string
+    status?: string
+  }
+  if (emailKey(reqData.email ?? '') !== em) {
+    throw new Error('Request email does not match.')
+  }
+  if (reqData.status !== 'pending') {
+    throw new Error('That request is no longer pending.')
+  }
+
+  const batch = writeBatch(db)
+  const requestUid = typeof reqData.requestUid === 'string' ? reqData.requestUid : undefined
+
+  if (requestUid) {
+    // Do not use fetchSignInMethodsForEmail here: with Email Enumeration Protection enabled,
+    // Firebase often returns [] so we would falsely reject valid Email/Password accounts.
+    // This request row only exists after the applicant signed in with password to create it.
+    const staffSnap = await getDoc(doc(db, APP_USERS, requestUid))
+    if (staffSnap.exists()) {
+      throw new Error('That user is already on the staff list.')
+    }
+
+    batch.update(doc(db, ACCESS_REQUESTS, requestId), {
+      status: 'approved',
+      handledAt: serverTimestamp(),
+      createdUid: requestUid,
+    })
+    batch.set(doc(db, APP_USERS, requestUid), {
+      email: em,
+      accessRequestId: requestId,
+      approvedAt: serverTimestamp(),
+      approvedBy: approvedByUid,
+    })
+    await batch.commit()
+    return { email: em, emailedReset: false }
+  }
+
   const methods = await fetchSignInMethodsForEmail(auth, em)
   if (methods.length > 0) {
     throw new Error('That email already has an account in Firebase.')
@@ -107,7 +168,6 @@ export async function approveAccessRequestFirestore(
 
   const uid = await createParkingUserAndSendPasswordReset(em)
 
-  const batch = writeBatch(db)
   batch.update(doc(db, ACCESS_REQUESTS, requestId), {
     status: 'approved',
     handledAt: serverTimestamp(),
@@ -124,6 +184,11 @@ export async function approveAccessRequestFirestore(
   return { email: em, emailedReset: true }
 }
 
+/**
+ * Removes staff from the app (Firestore `app_users` only).
+ * Firebase client SDK cannot delete another user’s Auth account without a paid backend (Admin SDK).
+ * To revoke login completely, delete that user under Firebase Console → Authentication → Users.
+ */
 export async function removeAppUserRecord(
   db: Firestore,
   targetUid: string,
