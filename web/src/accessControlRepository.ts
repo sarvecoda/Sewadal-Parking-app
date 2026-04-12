@@ -13,6 +13,7 @@ import {
   type Firestore,
 } from 'firebase/firestore'
 import { fetchSignInMethodsForEmail, signInWithEmailAndPassword, signOut } from 'firebase/auth'
+import { emailHasFirebasePasswordAccount } from './authEmailRegistered'
 import { getFirebaseAuth } from './firebase'
 import {
   createParkingUserAndSendPasswordReset,
@@ -90,6 +91,28 @@ export async function listPendingAccessRequests(db: Firestore): Promise<AccessRe
     }
   })
   rows.sort((a, b) => (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0))
+
+  const staleIds: string[] = []
+  for (const r of rows) {
+    if (!(await emailHasFirebasePasswordAccount(r.email))) {
+      staleIds.push(r.id)
+    }
+  }
+  if (staleIds.length > 0) {
+    const CHUNK = 400
+    for (let i = 0; i < staleIds.length; i += CHUNK) {
+      const batch = writeBatch(db)
+      for (const id of staleIds.slice(i, i + CHUNK)) {
+        batch.update(doc(db, ACCESS_REQUESTS, id), {
+          status: 'auth_removed',
+          handledAt: serverTimestamp(),
+        })
+      }
+      await batch.commit()
+    }
+    return rows.filter((r) => !staleIds.includes(r.id))
+  }
+
   return rows
 }
 
@@ -100,6 +123,25 @@ export async function listAppUsersFirestore(db: Firestore): Promise<AppUserRow[]
     return { uid: d.id, email: x.email }
   })
   rows.sort((a, b) => a.email.localeCompare(b.email))
+
+  const orphanUids: string[] = []
+  for (const r of rows) {
+    if (!(await emailHasFirebasePasswordAccount(r.email))) {
+      orphanUids.push(r.uid)
+    }
+  }
+  if (orphanUids.length > 0) {
+    const CHUNK = 400
+    for (let i = 0; i < orphanUids.length; i += CHUNK) {
+      const batch = writeBatch(db)
+      for (const uid of orphanUids.slice(i, i + CHUNK)) {
+        batch.delete(doc(db, APP_USERS, uid))
+      }
+      await batch.commit()
+    }
+    return rows.filter((r) => !orphanUids.includes(r.uid))
+  }
+
   return rows
 }
 
@@ -138,9 +180,15 @@ export async function approveAccessRequestFirestore(
   const requestUid = typeof reqData.requestUid === 'string' ? reqData.requestUid : undefined
 
   if (requestUid) {
-    // Do not use fetchSignInMethodsForEmail here: with Email Enumeration Protection enabled,
-    // Firebase often returns [] so we would falsely reject valid Email/Password accounts.
-    // This request row only exists after the applicant signed in with password to create it.
+    if (!(await emailHasFirebasePasswordAccount(em))) {
+      await updateDoc(doc(db, ACCESS_REQUESTS, requestId), {
+        status: 'auth_removed',
+        handledAt: serverTimestamp(),
+      })
+      throw new Error(
+        'That email no longer has a Firebase login (it was probably deleted under Authentication). This request was closed—refresh Pending requests.',
+      )
+    }
     const staffSnap = await getDoc(doc(db, APP_USERS, requestUid))
     if (staffSnap.exists()) {
       throw new Error('That user is already on the staff list.')
