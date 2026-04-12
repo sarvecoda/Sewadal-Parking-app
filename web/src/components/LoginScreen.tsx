@@ -40,7 +40,8 @@ const fixedResetEmail = import.meta.env.VITE_PASSWORD_RESET_EMAIL?.trim() ?? ''
 
 /**
  * Username + password (see `VITE_LOGIN_EMAIL_DOMAIN`), or full email if value contains `@`.
- * Optional `VITE_PASSWORD_RESET_EMAIL`: one-tap forgot password sends Firebase reset to that address only.
+ * Forgot password: sends Firebase reset to `VITE_PASSWORD_RESET_EMAIL` if set, else to the
+ * account for the username typed above.
  */
 export function LoginScreen() {
   const [username, setUsername] = useState('')
@@ -112,16 +113,34 @@ export function LoginScreen() {
     setError('')
   }
 
-  async function sendFixedReset() {
-    if (!fixedResetEmail) return
+  async function sendPasswordReset() {
     setResetFeedback(null)
     setResetNote('')
     setResetBusy(true)
     try {
+      let target: string
+      if (fixedResetEmail) {
+        target = fixedResetEmail
+      } else {
+        try {
+          target = resolveSignInIdentifier(username)
+        } catch {
+          setResetFeedback('err')
+          setResetNote(
+            domainConfigured
+              ? 'Enter your username above first (same one you use to sign in), then tap Forgot password again.'
+              : 'Set VITE_LOGIN_EMAIL_DOMAIN in web/.env, or set VITE_PASSWORD_RESET_EMAIL to always send resets to one address.',
+          )
+          return
+        }
+      }
+
       const auth = getFirebaseAuth()
-      await sendPasswordResetEmail(auth, fixedResetEmail)
+      await sendPasswordResetEmail(auth, target)
       setResetFeedback('ok')
-      setResetNote('If this address has an account, Google sent a reset link. Check inbox and spam.')
+      setResetNote(
+        'If that account exists in Firebase, a password reset message was sent. Check inbox and spam, then open the link once.',
+      )
     } catch (err) {
       setResetFeedback('err')
       setResetNote(formatAuthError(err))
@@ -136,8 +155,8 @@ export function LoginScreen() {
         <h1 className="login-brand">SNM Bangalore</h1>
         <p className="login-sub">Parking</p>
         <p className="login-note login-note--muted">
-          Sign in with your <strong>username</strong> and password. (First account is created in
-          Firebase Console — see project README.)
+          Sign in with your <strong>username</strong> and password. Create accounts in Firebase
+          Console → Authentication → Users (see README).
         </p>
 
         <form className="login-form" onSubmit={handleSubmit}>
@@ -158,6 +177,8 @@ export function LoginScreen() {
             onChange={(e) => {
               setUsername(e.target.value)
               setError('')
+              setResetFeedback(null)
+              setResetNote('')
             }}
           />
 
@@ -187,16 +208,14 @@ export function LoginScreen() {
           />
 
           <div className="login-row-actions">
-            {fixedResetEmail ? (
-              <button
-                type="button"
-                className="link-button"
-                disabled={resetBusy}
-                onClick={() => void sendFixedReset()}
-              >
-                {resetBusy ? 'Sending…' : 'Forgot password?'}
-              </button>
-            ) : null}
+            <button
+              type="button"
+              className="link-button"
+              disabled={resetBusy}
+              onClick={() => void sendPasswordReset()}
+            >
+              {resetBusy ? 'Sending…' : 'Forgot password?'}
+            </button>
             <button type="button" className="link-button" onClick={applyGeneratedPassword}>
               Suggest strong password
             </button>
@@ -205,15 +224,49 @@ export function LoginScreen() {
           {resetFeedback && resetNote ? (
             <p
               className={
-                resetFeedback === 'err' ? 'form-error login-reset-inline' : 'login-reset-inline login-reset-inline--ok'
+                resetFeedback === 'err'
+                  ? 'form-error login-reset-inline'
+                  : 'login-reset-inline login-reset-inline--ok'
               }
               role={resetFeedback === 'err' ? 'alert' : 'status'}
             >
-              {resetNote}
+              {resetFeedback === 'err' && resetNote.includes('http') ? (
+                <>
+                  {resetNote.split(/(https?:\/\/[^\s]+)/).map((part, i) =>
+                    part.startsWith('http') ? (
+                      <a key={i} href={part} className="login-inline-link" target="_blank" rel="noreferrer">
+                        Open Firebase Authentication settings
+                      </a>
+                    ) : (
+                      <span key={i}>{part}</span>
+                    ),
+                  )}
+                </>
+              ) : (
+                resetNote
+              )}
             </p>
           ) : null}
 
-          {error ? <p className="login-error">{error}</p> : null}
+          {error ? (
+            <p className="login-error">
+              {error.includes('http') ? (
+                <>
+                  {error.split(/(https?:\/\/[^\s]+)/).map((part, i) =>
+                    part.startsWith('http') ? (
+                      <a key={i} href={part} className="login-inline-link" target="_blank" rel="noreferrer">
+                        Open Firebase sign-in settings
+                      </a>
+                    ) : (
+                      <span key={i}>{part}</span>
+                    ),
+                  )}
+                </>
+              ) : (
+                error
+              )}
+            </p>
+          ) : null}
 
           <button type="submit" className="btn btn-login" disabled={busy}>
             {busy ? 'Signing in…' : 'Sign in'}

@@ -22,8 +22,13 @@ export function formatAuthError(err: unknown): string {
         return 'Too many attempts. Please wait a few minutes and try again.'
       case 'auth/network-request-failed':
         return 'Network error. Check your connection and try again.'
-      case 'auth/operation-not-allowed':
-        return 'Email/password sign-in is not enabled for this project. Ask an administrator to turn it on in Firebase Console.'
+      case 'auth/operation-not-allowed': {
+        const pid = import.meta.env.VITE_FIREBASE_PROJECT_ID
+        const url = pid
+          ? `https://console.firebase.google.com/project/${pid}/authentication/providers`
+          : 'https://console.firebase.google.com/'
+        return `Email/password is disabled for this Firebase project. Open the link below, enable “Email/Password”, then Save: ${url}`
+      }
       default:
         break
     }

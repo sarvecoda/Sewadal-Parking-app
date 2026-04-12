@@ -31,9 +31,14 @@ Anyone else: add another user the same way (e.g. `mandeep@park.yourorg.com`); th
 
 **Full email still works:** if someone types a value with `@`, it is used as-is.
 
-### Forgot password (one tap, no extra screens)
+### Forgot password
 
-Set **`VITE_PASSWORD_RESET_EMAIL`** in `web/.env` to the **exact** email of the Firebase user who should receive reset links (e.g. your main admin). The login page then shows **Forgot password?** only; one click sends Firebase’s reset mail to that address — no modal and no address shown in the UI.
+**Forgot password?** is always on the login page. It sends Firebase’s reset email to:
+
+- **`VITE_PASSWORD_RESET_EMAIL`** if set in `web/.env` (always that account), or  
+- otherwise the account for the **username** you typed above (same mapping as sign-in).
+
+No modal. If Email/Password is disabled in Firebase, sign-in and reset both fail until you enable it (see error link on the login page).
 
 If reset links expire before you click, an **email scanner** may have opened them first; try again from a desktop browser or mark mail as “Not spam”.
 

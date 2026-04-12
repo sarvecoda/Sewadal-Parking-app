@@ -262,6 +262,19 @@ body {
   color: rgba(245, 240, 230, 0.75);
 }
 
+.login-inline-link {
+  color: #e8d4a8;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+
+.login-error .login-inline-link {
+  display: inline-block;
+  margin-top: 0.35rem;
+}
+
 .login-form {
   text-align: left;
   max-width: 100%;
