@@ -30,7 +30,7 @@ cd web && npm run deploy
 
 That runs `npm run build` in `web/functions/` then `firebase deploy --only hosting,functions`.
 
-**Billing:** Cloud Functions for Firebase usually require the **Blaze** plan on the Firebase project. If deploy fails, upgrade billing in the Firebase console, then deploy again.
+**Billing:** Cloud Functions for Firebase usually require the **Blaze** plan on the Firebase project. If deploy fails, upgrade billing in the Firebase console, then run `npm run deploy` again. Until then you can ship **only** the web app with `npm run deploy:hosting` (approval flows will not work until Functions are deployed).
 
 **Region:** Functions use **`asia-south1`**. The web app uses `getFunctions(..., 'asia-south1')` by default; override with **`VITE_FUNCTIONS_REGION`** in `web/.env` if you change the function region.
 
@@ -105,3 +105,4 @@ In [Firebase Console](https://console.firebase.google.com/) → your project →
 | `npm run dev`  | Local development                |
 | `npm run build`| Production build → `dist/`       |
 | `npm run deploy` | Build web + functions, then `firebase deploy --only hosting,functions` |
+| `npm run deploy:hosting` | Build web only, then `firebase deploy --only hosting` (no Cloud Functions) |
