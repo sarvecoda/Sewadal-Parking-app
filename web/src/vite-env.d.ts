@@ -14,6 +14,11 @@ interface ImportMetaEnv {
    * `username@park.yourorg.com`. Omit only if everyone types a full email in the username field.
    */
   readonly VITE_LOGIN_EMAIL_DOMAIN?: string
+  /**
+   * If set, "Forgot password?" sends Firebase’s reset email to this address only (one tap, no modal).
+   * Must be an existing Firebase Authentication user email.
+   */
+  readonly VITE_PASSWORD_RESET_EMAIL?: string
 }
 
 interface ImportMeta {

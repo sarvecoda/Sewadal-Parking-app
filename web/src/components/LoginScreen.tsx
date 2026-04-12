@@ -8,11 +8,9 @@ import {
 import { formatAuthError } from '../authErrors'
 import {
   isEmailDomainConfigured,
-  normalizeLocalPart,
   resolveSignInIdentifier,
 } from '../authIdentity'
 import { getFirebaseAuth } from '../firebase'
-import { ModalFrame } from './ModalFrame'
 
 function generateStrongPassword(length = 18): string {
   const lower = 'abcdefghjkmnpqrstuvwxyz'
@@ -38,9 +36,11 @@ function generateStrongPassword(length = 18): string {
   return arr.join('')
 }
 
+const fixedResetEmail = import.meta.env.VITE_PASSWORD_RESET_EMAIL?.trim() ?? ''
+
 /**
- * Sign-in with **username** + password (mapped to `username@VITE_LOGIN_EMAIL_DOMAIN`),
- * or full **email** if the value contains `@`. Firebase Auth must have matching users.
+ * Username + password (see `VITE_LOGIN_EMAIL_DOMAIN`), or full email if value contains `@`.
+ * Optional `VITE_PASSWORD_RESET_EMAIL`: one-tap forgot password sends Firebase reset to that address only.
  */
 export function LoginScreen() {
   const [username, setUsername] = useState('')
@@ -48,10 +48,9 @@ export function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-
-  const [forgotOpen, setForgotOpen] = useState(false)
-  const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
-  const [resetMessage, setResetMessage] = useState('')
+  const [resetBusy, setResetBusy] = useState(false)
+  const [resetFeedback, setResetFeedback] = useState<'ok' | 'err' | null>(null)
+  const [resetNote, setResetNote] = useState('')
 
   const domainConfigured = isEmailDomainConfigured()
 
@@ -77,7 +76,7 @@ export function LoginScreen() {
       if (e instanceof Error) {
         if (e.message === 'MISSING_EMAIL_DOMAIN') {
           setError(
-            'Set VITE_LOGIN_EMAIL_DOMAIN in web/.env (same domain as Firebase user emails, e.g. park.yourorg.com).',
+            'Set VITE_LOGIN_EMAIL_DOMAIN in web/.env (same domain as Firebase user emails).',
           )
         } else if (e.message === 'EMPTY_USERNAME') {
           setError('Enter your username.')
@@ -113,40 +112,21 @@ export function LoginScreen() {
     setError('')
   }
 
-  async function sendReset() {
-    const local = normalizeLocalPart(username)
-    if (!local && !username.trim().includes('@')) {
-      setResetMessage('Enter your username on the sign-in form above, then open “Forgot password?” again.')
-      setResetStatus('error')
-      return
-    }
-    let authEmail: string
-    try {
-      authEmail = resolveSignInIdentifier(username)
-    } catch {
-      setResetMessage(
-        domainConfigured
-          ? 'Enter a valid username on the sign-in form first.'
-          : 'This app is not configured for username sign-in. Ask your administrator.',
-      )
-      setResetStatus('error')
-      return
-    }
-
-    setResetStatus('sending')
-    setResetMessage('')
+  async function sendFixedReset() {
+    if (!fixedResetEmail) return
+    setResetFeedback(null)
+    setResetNote('')
+    setResetBusy(true)
     try {
       const auth = getFirebaseAuth()
-      // Omit custom ActionCodeSettings: wrong continueUrl is a common cause of
-      // "link expired / already used" (and some mail scanners prefetch URLs).
-      await sendPasswordResetEmail(auth, authEmail)
-      setResetStatus('sent')
-      setResetMessage(
-        'If that account exists, a reset message was sent. Check spam/promotions and open the link once, in this browser if possible.',
-      )
+      await sendPasswordResetEmail(auth, fixedResetEmail)
+      setResetFeedback('ok')
+      setResetNote('If this address has an account, Google sent a reset link. Check inbox and spam.')
     } catch (err) {
-      setResetStatus('error')
-      setResetMessage(formatAuthError(err))
+      setResetFeedback('err')
+      setResetNote(formatAuthError(err))
+    } finally {
+      setResetBusy(false)
     }
   }
 
@@ -156,9 +136,8 @@ export function LoginScreen() {
         <h1 className="login-brand">SNM Bangalore</h1>
         <p className="login-sub">Parking</p>
         <p className="login-note login-note--muted">
-          Sign in with your <strong>username</strong> and password. Admins create accounts in
-          Firebase Authentication — each username matches the part before{' '}
-          <strong>@</strong> in that account’s email.
+          Sign in with your <strong>username</strong> and password. (First account is created in
+          Firebase Console — see project README.)
         </p>
 
         <form className="login-form" onSubmit={handleSubmit}>
@@ -174,7 +153,7 @@ export function LoginScreen() {
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
-            placeholder={domainConfigured ? 'e.g. mandeep' : 'email or username'}
+            placeholder={domainConfigured ? 'e.g. admin' : 'email or username'}
             value={username}
             onChange={(e) => {
               setUsername(e.target.value)
@@ -208,27 +187,31 @@ export function LoginScreen() {
           />
 
           <div className="login-row-actions">
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => {
-                setForgotOpen(true)
-                setResetStatus('idle')
-                setResetMessage('')
-              }}
-            >
-              Forgot password?
-            </button>
+            {fixedResetEmail ? (
+              <button
+                type="button"
+                className="link-button"
+                disabled={resetBusy}
+                onClick={() => void sendFixedReset()}
+              >
+                {resetBusy ? 'Sending…' : 'Forgot password?'}
+              </button>
+            ) : null}
             <button type="button" className="link-button" onClick={applyGeneratedPassword}>
               Suggest strong password
             </button>
           </div>
-          <p className="login-microcopy">
-            <strong>Forgot password?</strong> sends a reset link to the address Firebase has on file
-            for your username — nothing is shown on screen. Some inboxes scan links; if the first
-            click fails, use <strong>Resend</strong> after a minute or open the link from a
-            computer. Mark sender as “Not spam” if messages land in spam.
-          </p>
+
+          {resetFeedback && resetNote ? (
+            <p
+              className={
+                resetFeedback === 'err' ? 'form-error login-reset-inline' : 'login-reset-inline login-reset-inline--ok'
+              }
+              role={resetFeedback === 'err' ? 'alert' : 'status'}
+            >
+              {resetNote}
+            </p>
+          ) : null}
 
           {error ? <p className="login-error">{error}</p> : null}
 
@@ -237,76 +220,6 @@ export function LoginScreen() {
           </button>
         </form>
       </div>
-
-      {forgotOpen ? (
-        <ModalFrame
-          title="Reset password"
-          titleId="reset-title"
-          onClose={() => {
-            setForgotOpen(false)
-            setResetStatus('idle')
-            setResetMessage('')
-          }}
-          locked={resetStatus === 'sending'}
-        >
-          <p className="modal-lead">
-            Uses the <strong>username</strong> you typed on the sign-in screen. We’ll send a
-            secure reset link from Google/Firebase to the email on file for that account — your
-            username stays private here.
-          </p>
-          {resetMessage ? (
-            <p
-              className={
-                resetStatus === 'error'
-                  ? 'form-error login-reset-msg'
-                  : 'login-reset-msg login-reset-msg--ok'
-              }
-              role={resetStatus === 'error' ? 'alert' : 'status'}
-            >
-              {resetMessage}
-            </p>
-          ) : null}
-          <div className="modal-footer modal-footer--stack">
-            <button
-              type="button"
-              className="btn btn-primary btn-block"
-              onClick={() => void sendReset()}
-              disabled={
-                resetStatus === 'sending' ||
-                resetStatus === 'sent' ||
-                (!normalizeLocalPart(username) && !username.trim().includes('@'))
-              }
-            >
-              {resetStatus === 'sending'
-                ? 'Sending…'
-                : resetStatus === 'sent'
-                  ? 'Check your email'
-                  : 'Send reset link'}
-            </button>
-            {resetStatus === 'sent' || resetStatus === 'error' ? (
-              <button
-                type="button"
-                className="btn btn-secondary btn-block"
-                onClick={() => {
-                  setResetStatus('idle')
-                  setResetMessage('')
-                  void sendReset()
-                }}
-              >
-                Resend link
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="btn btn-secondary btn-block"
-              onClick={() => setForgotOpen(false)}
-              disabled={resetStatus === 'sending'}
-            >
-              Close
-            </button>
-          </div>
-        </ModalFrame>
-      ) : null}
     </div>
   )
 }

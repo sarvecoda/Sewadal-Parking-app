@@ -251,6 +251,17 @@ body {
   border-radius: var(--radius-sm);
 }
 
+.login-reset-inline {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.login-reset-inline--ok {
+  color: rgba(245, 240, 230, 0.75);
+}
+
 .login-form {
   text-align: left;
   max-width: 100%;

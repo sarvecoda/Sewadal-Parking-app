@@ -9,24 +9,35 @@ Mobile-first web client for the same Firestore data as the Android app (`your_co
 
 ## Sign-in (Firebase Authentication)
 
-The web app uses **Firebase Email / password**. On the login screen staff type a **username** (not your personal Gmail). Behind the scenes that becomes `username@YOUR_DOMAIN` — you choose `YOUR_DOMAIN` and create matching users in Firebase.
+There is **no built-in username or password** in the app. You create the first (and every) account in the Firebase Console.
+
+### First login — what to use?
+
+1. Open [Firebase Console](https://console.firebase.google.com/) → your project → **Authentication** → **Users** → **Add user**.
+2. Enter an **email** (this is only stored in Firebase; staff can still sign in with the **part before `@`** as username if you configure the domain below).
+   - Example: create `admin@park.yourorg.com` and set a temporary password.
+3. In `web/.env` set **`VITE_LOGIN_EMAIL_DOMAIN=park.yourorg.com`** (same domain as that email, no `@`).
+4. On the app login screen: **Username** = `admin` (the part before `@`), **Password** = the password you just set.
+
+Anyone else: add another user the same way (e.g. `mandeep@park.yourorg.com`); they sign in with username **`mandeep`**.
+
+**Optional:** set `VITE_LEGACY_LOGIN=true` for the old fixed **nirankar / nirankar** demo only while migrating.
 
 ### One-time setup
 
 1. **Authentication** → **Sign-in method** → enable **Email/Password**.
-2. Pick a domain you control (or a single shared mailbox pattern), e.g. `park.yourorg.com` with Google Workspace / DNS, or another hoster. Each worker is a Firebase user like `mandeep@park.yourorg.com` (local part = what they type as **username**).
-3. In `web/.env` set **`VITE_LOGIN_EMAIL_DOMAIN=park.yourorg.com`** (no `@`). Rebuild / redeploy after changing env.
-4. Optional: set `VITE_LEGACY_LOGIN=true` for the old **nirankar / nirankar** demo only while migrating.
+2. Pick a domain you control so every user email looks like `someone@park.yourorg.com`.
+3. Set **`VITE_LOGIN_EMAIL_DOMAIN=park.yourorg.com`** in `web/.env`. Rebuild / redeploy after changes.
 
-**Full email still works:** if someone types an address with `@`, it is used as-is (for admins).
+**Full email still works:** if someone types a value with `@`, it is used as-is.
 
-### Forgot password
+### Forgot password (one tap, no extra screens)
 
-- No email is shown on screen. **Forgot password?** uses the **username** already typed on the sign-in form and sends Firebase’s reset mail to the address on file for that account.
-- **Reset link “expired / already used” right away:** often an **email scanner** opened the link before you (one-time links). Try **Resend link**, wait a minute, open from **desktop Gmail in a browser**, or **“Open in Safari/Chrome”** instead of an in-app webview. Avoid preview panes that fetch URLs.
-- **Spam:** ask users to **“Not spam”** / add the sender to contacts. For a custom domain, set up **SPF/DKIM** for that domain in Google Workspace or your DNS host so Google trusts the mail more.
+Set **`VITE_PASSWORD_RESET_EMAIL`** in `web/.env` to the **exact** email of the Firebase user who should receive reset links (e.g. your main admin). The login page then shows **Forgot password?** only; one click sends Firebase’s reset mail to that address — no modal and no address shown in the UI.
 
-**Suggest strong password:** fills the password field and copies a random password to the clipboard (for use after the reset link or when editing a user in the Console).
+If reset links expire before you click, an **email scanner** may have opened them first; try again from a desktop browser or mark mail as “Not spam”.
+
+**Suggest strong password:** fills the password field and copies a random password to the clipboard.
 
 ## Firebase Hosting (same idea as [Book Inventory on web.app](https://book-inventory-app-f1a77.web.app))
 
