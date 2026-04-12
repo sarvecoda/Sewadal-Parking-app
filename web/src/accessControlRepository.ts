@@ -1,7 +1,7 @@
 import {
   addDoc,
   collection,
-  deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -185,9 +185,10 @@ export async function approveAccessRequestFirestore(
 }
 
 /**
- * Removes staff from the app (Firestore `app_users` only).
- * Firebase client SDK cannot delete another user’s Auth account without a paid backend (Admin SDK).
- * To revoke login completely, delete that user under Firebase Console → Authentication → Users.
+ * Revokes staff access: deletes `app_users/{uid}` and, when we know the original request id,
+ * sets that `access_requests` row back to **pending** so it shows under Pending requests again.
+ * The person’s Firebase Auth account is unchanged—they see the “request pending” screen until
+ * re-approved. Full removal of Auth + Firestore rows is manual in the Firebase Console.
  */
 export async function removeAppUserRecord(
   db: Firestore,
@@ -197,5 +198,25 @@ export async function removeAppUserRecord(
   if (targetUid === actingAdminUid) {
     throw new Error('Cannot remove your own account from this list.')
   }
-  await deleteDoc(doc(db, APP_USERS, targetUid))
+  const userRef = doc(db, APP_USERS, targetUid)
+  const userSnap = await getDoc(userRef)
+  if (!userSnap.exists()) {
+    throw new Error('That person is not on the staff list.')
+  }
+  const u = userSnap.data() as { email?: string; accessRequestId?: string }
+  const batch = writeBatch(db)
+  batch.delete(userRef)
+  const rid = typeof u.accessRequestId === 'string' ? u.accessRequestId.trim() : ''
+  if (rid) {
+    const reqRef = doc(db, ACCESS_REQUESTS, rid)
+    const reqSnap = await getDoc(reqRef)
+    if (reqSnap.exists()) {
+      batch.update(reqRef, {
+        status: 'pending',
+        handledAt: deleteField(),
+        createdUid: deleteField(),
+      })
+    }
+  }
+  await batch.commit()
 }

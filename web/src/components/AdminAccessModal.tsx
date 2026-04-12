@@ -102,7 +102,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
     if (uid === authUser.uid) return
     if (
       !window.confirm(
-        'Remove this person from the staff list? They will lose access to parking data here. To delete their login entirely, remove them under Firebase Console → Authentication → Users (the free web app cannot do that automatically).',
+        'Remove this person from staff? Their parking access ends and their access request goes back to Pending so you can approve them again. Their Firebase login is unchanged until you delete the user under Authentication → Users in the Firebase Console.',
       )
     )
       return
@@ -111,6 +111,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
     try {
       await removeAppUserRecord(db, uid, authUser.uid)
       await loadUsers()
+      await loadRequests()
     } catch (e) {
       setError(formatFirestoreError(e))
     } finally {
@@ -219,8 +220,9 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
       ) : (
         <div className="admin-access-list">
           <p className="login-note login-note--muted">
-            People approved through this app. Remove clears their staff access in Firestore only. To
-            delete their login under Authentication, open{' '}
+            People approved through this app. <strong>Remove</strong> sends them back to{' '}
+            <strong>Pending requests</strong> (and they see “pending” on sign-in) but does not
+            delete their Firebase login. To remove them completely, delete their user under{' '}
             {authUsersConsoleHref ? (
               <a
                 href={authUsersConsoleHref}
