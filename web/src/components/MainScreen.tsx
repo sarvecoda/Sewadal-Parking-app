@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { User } from 'firebase/auth'
 import type { Firestore } from 'firebase/firestore'
 import type { VehicleData, VehicleDoc } from '../types'
+import { isAppAdmin } from '../adminConfig'
 import {
   addVehicleToBoth,
   deleteAllToday,
@@ -10,11 +12,13 @@ import {
   subscribeVehicles,
 } from '../vehicleRepository'
 import { clearLegacySession } from './LegacyLoginScreen'
+import { AdminAccessModal } from './AdminAccessModal'
 import { signOutUser } from '../firebase'
 import { ModalFrame } from './ModalFrame'
 
 type Props = {
   db: Firestore
+  authUser?: User | null
   /** When using `VITE_LEGACY_LOGIN`, clear session and return to legacy login. */
   onLegacyLogout?: () => void
 }
@@ -42,7 +46,7 @@ function validateNewVehicle(form: {
   return null
 }
 
-export function MainScreen({ db, onLegacyLogout }: Props) {
+export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
   const [today, setToday] = useState<VehicleDoc[]>([])
   const [all, setAll] = useState<VehicleDoc[]>([])
   const [toast, setToast] = useState<string | null>(null)
@@ -78,6 +82,9 @@ export function MainScreen({ db, onLegacyLogout }: Props) {
 
   const [addOpen, setAddOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [adminOpen, setAdminOpen] = useState(false)
+
+  const canAdmin = isAppAdmin(authUser)
   const [confirmAdd, setConfirmAdd] = useState<VehicleData | null>(null)
   const [deleteOne, setDeleteOne] = useState<VehicleDoc | null>(null)
   const [deleteAllOpen, setDeleteAllOpen] = useState(false)
@@ -234,6 +241,7 @@ export function MainScreen({ db, onLegacyLogout }: Props) {
   const callHref = callConfirm ? telHref(callConfirm.entry3) : null
 
   return (
+    <>
     <div className="main-root">
       <header className="main-header">
         <div className="main-header__text">
@@ -243,14 +251,26 @@ export function MainScreen({ db, onLegacyLogout }: Props) {
             {today.length} vehicle{today.length === 1 ? '' : 's'} · {all.length} in master
           </p>
         </div>
-        <button
-          type="button"
-          className="btn-pill btn-pill--ghost"
-          onClick={handleLogout}
-          disabled={busy}
-        >
-          Log out
-        </button>
+        <div className="main-header__actions">
+          {canAdmin ? (
+            <button
+              type="button"
+              className="btn-pill btn-pill--ghost"
+              onClick={() => setAdminOpen(true)}
+              disabled={busy}
+            >
+              Manage access
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="btn-pill btn-pill--ghost"
+            onClick={handleLogout}
+            disabled={busy}
+          >
+            Log out
+          </button>
+        </div>
       </header>
 
       {fireErr ? (
@@ -600,5 +620,7 @@ export function MainScreen({ db, onLegacyLogout }: Props) {
         </ModalFrame>
       ) : null}
     </div>
+    {adminOpen ? <AdminAccessModal onClose={() => setAdminOpen(false)} /> : null}
+    </>
   )
 }

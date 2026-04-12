@@ -9,16 +9,36 @@ Mobile-first web client for the same Firestore data as the Android app (`your_co
 
 ## Sign-in (Firebase Authentication)
 
-### Create account (self-service)
+### Admin approval (default)
 
-On the app, open **Create account**, enter your **email** and **password**. The app calls Firebase `createUserWithEmailAndPassword`—no need to add the user manually in the console. Firebase stores the full email; the profile **display name** is set to the part before `@` (e.g. `pat` from `pat@gmail.com`).
+New staff use **Request access** (email + optional note) while **signed out**. Nothing is created in Authentication until the **admin** signs in and opens **Manage access** → approves the request. The admin then copies a **one-time password-reset link** and shares it with the new user (e.g. WhatsApp). That user opens the link, sets a password, and signs in on **Sign in**.
 
-Anyone with the app link can register unless you add server-side restrictions later (e.g. Cloud Function or allowlist).
+The admin account is fixed in code by **Firebase Auth UID** (and should match `sarveshkum9999@gmail.com` on that account):
+
+- `web/src/adminConfig.ts` — `ADMIN_UID`
+- `web/functions/src/index.ts` — same `ADMIN_UID` constant
+
+If you ever change admin user, update **both** files and redeploy **hosting + functions**.
+
+### Cloud Functions (required)
+
+Access requests and approvals use **callable Cloud Functions** in `web/functions/` (Node 20). Deploy them with Hosting:
+
+```bash
+cd web && npm run deploy
+```
+
+That runs `npm run build` in `web/functions/` then `firebase deploy --only hosting,functions`.
+
+**Billing:** Cloud Functions for Firebase usually require the **Blaze** plan on the Firebase project. If deploy fails, upgrade billing in the Firebase console, then deploy again.
+
+**Region:** Functions use **`asia-south1`**. The web app uses `getFunctions(..., 'asia-south1')` by default; override with **`VITE_FUNCTIONS_REGION`** in `web/.env` if you change the function region.
 
 ### First login — what to use?
 
-1. **Authentication** → **Sign-in method** → enable **Email/Password** (required for sign-up and email/password sign-in).
-2. **Optional:** **Authentication** → **Users** → **Add user** if you prefer to create accounts in the console instead of self-service.
+1. **Authentication** → **Sign-in method** → enable **Email/Password**.
+2. Ensure the **admin** account exists (same UID as `ADMIN_UID` in code) so they can open **Manage access**.
+3. **Optional:** add other users manually in the console, or rely entirely on **Request access** + approval.
 
 **Username sign-in (no `@` typed in the app):** the app builds the Firebase email as **`{username}@{domain}`**:
 
@@ -42,7 +62,7 @@ If you prefer addresses like `someone@park.yourorg.com`, set **`VITE_LOGIN_EMAIL
 - **`VITE_PASSWORD_RESET_EMAIL`** if set in `web/.env` (always that account), or  
 - otherwise the account for the **username** you typed above (same mapping as sign-in).
 
-No modal. If Email/Password is disabled in Firebase, sign-in, sign-up, and reset all fail until you enable it.
+No modal. If Email/Password is disabled in Firebase, sign-in and reset fail until you enable it.
 
 ### Point password-reset emails at this app (recommended)
 
@@ -63,7 +83,7 @@ This project deploys the **built** `dist/` folder to **Firebase Hosting** in pro
 1. Install deps: `npm install`
 2. Ensure `web/.env` exists so `npm run build` embeds your Firebase config (`.env` is not committed).
 3. Log in once: `npx firebase login` (use the GitHub/Google account that owns this Firebase project).
-4. Deploy: `npm run deploy`
+4. Deploy (Hosting + Cloud Functions): `npm run deploy` from the `web/` folder
 
 After the first deploy, the app is available at:
 
@@ -84,4 +104,4 @@ In [Firebase Console](https://console.firebase.google.com/) → your project →
 | -------------- | -------------------------------- |
 | `npm run dev`  | Local development                |
 | `npm run build`| Production build → `dist/`       |
-| `npm run deploy` | Build + `firebase deploy --only hosting` |
+| `npm run deploy` | Build web + functions, then `firebase deploy --only hosting,functions` |

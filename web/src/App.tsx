@@ -104,5 +104,5 @@ export default function App() {
     return <LoginScreen />
   }
 
-  return <MainScreen db={db} />
+  return <MainScreen db={db} authUser={authUser} />
 }

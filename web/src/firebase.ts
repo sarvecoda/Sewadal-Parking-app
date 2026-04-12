@@ -1,6 +1,7 @@
 import { getApps, initializeApp, type FirebaseApp } from 'firebase/app'
 import { getAuth, signOut, type Auth } from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
+import { getFunctions, type Functions } from 'firebase/functions'
 
 function readConfig() {
   return {
@@ -24,6 +25,7 @@ export function isFirebaseConfigured(): boolean {
 let app: FirebaseApp | null = null
 let db: Firestore | null = null
 let auth: Auth | null = null
+let functions: Functions | null = null
 
 export function getFirestoreDb(): Firestore {
   if (db) return db
@@ -50,5 +52,16 @@ export function getFirebaseAuth(): Auth {
 
 export async function signOutUser(): Promise<void> {
   await signOut(getFirebaseAuth())
+}
+
+/** Cloud Functions (same project). Region must match `functions/src/index.ts` (`setGlobalOptions`). */
+export function getFirebaseFunctions(): Functions {
+  if (functions) return functions
+  if (!getApps().length) {
+    getFirestoreDb()
+  }
+  const region = import.meta.env.VITE_FUNCTIONS_REGION?.trim() || 'asia-south1'
+  functions = getFunctions(getApps()[0]!, region)
+  return functions
 }
 

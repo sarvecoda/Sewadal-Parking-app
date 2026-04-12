@@ -14,6 +14,8 @@ dist-ssr
 .env
 .npm-cache
 .firebase
+functions/lib
+functions/node_modules
 
 # Editor directories and files
 .vscode/*

@@ -1,19 +1,19 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import {
   browserLocalPersistence,
-  createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
   setPersistence,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
-  updateProfile,
 } from 'firebase/auth'
+import { httpsCallable } from 'firebase/functions'
 import { formatAuthError } from '../authErrors'
 import {
   isEmailDomainConfigured,
   resolveSignInIdentifier,
 } from '../authIdentity'
-import { getFirebaseAuth } from '../firebase'
+import { formatCallableError } from '../callableErrors'
+import { getFirebaseAuth, getFirebaseFunctions } from '../firebase'
 
 function generateStrongPassword(length = 18): string {
   const lower = 'abcdefghjkmnpqrstuvwxyz'
@@ -55,19 +55,19 @@ function looksLikeEmail(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)
 }
 
-type AuthMode = 'signIn' | 'signUp'
+type AuthMode = 'signIn' | 'requestAccess'
 
 /**
- * Sign in: email or short username + password (see authIdentity).
- * Create account: full email + password — creates Firebase user and sets display name to local part.
+ * Sign in: email or short username + password.
+ * Request access: sends a pending request; admin approves via Cloud Function, then user sets password via link.
  */
 export function LoginScreen() {
   const [authMode, setAuthMode] = useState<AuthMode>('signIn')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [signupEmail, setSignupEmail] = useState('')
-  const [signupPassword, setSignupPassword] = useState('')
-  const [signupPassword2, setSignupPassword2] = useState('')
+  const [requestEmail, setRequestEmail] = useState('')
+  const [requestNote, setRequestNote] = useState('')
+  const [requestOk, setRequestOk] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -95,6 +95,7 @@ export function LoginScreen() {
   function switchMode(next: AuthMode) {
     setAuthMode(next)
     setError('')
+    setRequestOk('')
     setResetFeedback(null)
     setResetNote('')
   }
@@ -134,30 +135,27 @@ export function LoginScreen() {
     }
   }
 
-  async function handleSignUp(e: FormEvent) {
+  async function handleRequestAccess(e: FormEvent) {
     e.preventDefault()
     setError('')
-    const email = signupEmail.trim().toLowerCase()
+    setRequestOk('')
+    const email = requestEmail.trim().toLowerCase()
     if (!looksLikeEmail(email)) {
-      setError('Enter a valid email (include @ and domain, e.g. you@gmail.com).')
-      return
-    }
-    if (signupPassword.length < 6) {
-      setError('Password must be at least 6 characters (8 or more is better).')
-      return
-    }
-    if (signupPassword !== signupPassword2) {
-      setError('Passwords do not match.')
+      setError('Enter a valid email (include @ and domain).')
       return
     }
     setBusy(true)
     try {
-      const auth = getFirebaseAuth()
-      const cred = await createUserWithEmailAndPassword(auth, email, signupPassword)
-      const localPart = email.split('@')[0] ?? email
-      await updateProfile(cred.user, { displayName: localPart })
+      const submitAccessRequest = httpsCallable(getFirebaseFunctions(), 'submitAccessRequest')
+      await submitAccessRequest({
+        email,
+        note: requestNote.trim().slice(0, 800) || undefined,
+      })
+      setRequestOk(
+        'Request sent. When the admin approves it, they will share a link so you can set your password—then sign in here.',
+      )
     } catch (err) {
-      setError(formatAuthError(err))
+      setError(formatCallableError(err))
     } finally {
       setBusy(false)
     }
@@ -165,12 +163,7 @@ export function LoginScreen() {
 
   function applyGeneratedPassword() {
     const next = generateStrongPassword()
-    if (authMode === 'signUp') {
-      setSignupPassword(next)
-      setSignupPassword2(next)
-    } else {
-      setPassword(next)
-    }
+    setPassword(next)
     setShowPassword(true)
     void navigator.clipboard.writeText(next).catch(() => {})
     setError('')
@@ -184,14 +177,6 @@ export function LoginScreen() {
       let target: string
       if (fixedResetEmail) {
         target = fixedResetEmail
-      } else if (authMode === 'signUp') {
-        const e = signupEmail.trim().toLowerCase()
-        if (!looksLikeEmail(e)) {
-          setResetFeedback('err')
-          setResetNote('Enter your email on this screen first, then tap Forgot password again.')
-          return
-        }
-        target = e
       } else {
         try {
           target = resolveSignInIdentifier(username)
@@ -251,11 +236,11 @@ export function LoginScreen() {
           <button
             type="button"
             role="tab"
-            aria-selected={authMode === 'signUp'}
-            className={`login-tab${authMode === 'signUp' ? ' login-tab--active' : ''}`}
-            onClick={() => switchMode('signUp')}
+            aria-selected={authMode === 'requestAccess'}
+            className={`login-tab${authMode === 'requestAccess' ? ' login-tab--active' : ''}`}
+            onClick={() => switchMode('requestAccess')}
           >
-            Create account
+            Request access
           </button>
         </div>
 
@@ -263,7 +248,7 @@ export function LoginScreen() {
           <>
             <p className="login-note login-note--muted">
               Use your <strong>email</strong> (full address) or a short <strong>username</strong> if
-              your account was created that way. Password is the one you chose (or were given).
+              your account was set up that way.
             </p>
             <form className="login-form" onSubmit={(e) => void handleSignIn(e)}>
               <label className="field-label" htmlFor="login-username">
@@ -352,17 +337,16 @@ export function LoginScreen() {
         ) : (
           <>
             <p className="login-note login-note--muted">
-              Add yourself here with your <strong>email</strong> and a password—we create your
-              account in Firebase. Your <strong>username</strong> in the app will be the part
-              before <strong>@</strong> (e.g. <code className="login-code">pat</code> from{' '}
-              <code className="login-code">pat@gmail.com</code>).
+              New staff: enter your <strong>work email</strong> and an optional note. Your account is
+              created only after the <strong>admin</strong> approves the request (you must be signed
+              out here). You will then get a link to choose your password.
             </p>
-            <form className="login-form" onSubmit={(e) => void handleSignUp(e)}>
-              <label className="field-label" htmlFor="signup-email">
+            <form className="login-form" onSubmit={(e) => void handleRequestAccess(e)}>
+              <label className="field-label" htmlFor="request-email">
                 Email
               </label>
               <input
-                id="signup-email"
+                id="request-email"
                 className="field-input"
                 name="email"
                 type="email"
@@ -371,80 +355,35 @@ export function LoginScreen() {
                 autoCorrect="off"
                 spellCheck={false}
                 placeholder="you@example.com"
-                value={signupEmail}
+                value={requestEmail}
                 onChange={(e) => {
-                  setSignupEmail(e.target.value)
+                  setRequestEmail(e.target.value)
                   setError('')
-                  setResetFeedback(null)
-                  setResetNote('')
+                  setRequestOk('')
                 }}
               />
 
-              <div className="login-password-row">
-                <label className="field-label login-password-label" htmlFor="signup-password">
-                  Password
-                </label>
-                <button
-                  type="button"
-                  className="link-button"
-                  onClick={() => setShowPassword((v) => !v)}
-                >
-                  {showPassword ? 'Hide' : 'Show'}
-                </button>
-              </div>
-              <input
-                id="signup-password"
-                className="field-input"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="new-password"
-                value={signupPassword}
-                onChange={(e) => {
-                  setSignupPassword(e.target.value)
-                  setError('')
-                }}
-              />
-
-              <label className="field-label" htmlFor="signup-password2">
-                Confirm password
+              <label className="field-label" htmlFor="request-note">
+                Note <span className="field-optional">(optional)</span>
               </label>
-              <input
-                id="signup-password2"
-                className="field-input"
-                name="password2"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="new-password"
-                value={signupPassword2}
+              <textarea
+                id="request-note"
+                className="field-input field-input--textarea"
+                name="note"
+                rows={3}
+                maxLength={800}
+                placeholder="Name or role, so the admin knows who you are"
+                value={requestNote}
                 onChange={(e) => {
-                  setSignupPassword2(e.target.value)
+                  setRequestNote(e.target.value)
                   setError('')
+                  setRequestOk('')
                 }}
               />
 
-              <div className="login-row-actions">
-                <button
-                  type="button"
-                  className="link-button"
-                  disabled={resetBusy}
-                  onClick={() => void sendPasswordReset()}
-                >
-                  {resetBusy ? 'Sending…' : 'Forgot password?'}
-                </button>
-                <button type="button" className="link-button" onClick={applyGeneratedPassword}>
-                  Suggest strong password
-                </button>
-              </div>
-
-              {resetFeedback && resetNote ? (
-                <p
-                  className={
-                    resetFeedback === 'err'
-                      ? 'form-error login-reset-inline'
-                      : 'login-reset-inline login-reset-inline--ok'
-                  }
-                  role={resetFeedback === 'err' ? 'alert' : 'status'}
-                >
-                  {resetNote}
+              {requestOk ? (
+                <p className="login-reset-inline login-reset-inline--ok" role="status">
+                  {requestOk}
                 </p>
               ) : null}
 
@@ -453,7 +392,7 @@ export function LoginScreen() {
               ) : null}
 
               <button type="submit" className="btn btn-login" disabled={busy}>
-                {busy ? 'Creating account…' : 'Create account'}
+                {busy ? 'Sending request…' : 'Send request'}
               </button>
             </form>
           </>
