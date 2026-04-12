@@ -25,6 +25,10 @@ interface ImportMetaEnv {
    * JavaScript origins** so “Choose Google account” can fill the email field.
    */
   readonly VITE_GOOGLE_OAUTH_WEB_CLIENT_ID?: string
+  /** Firestore collection for master vehicle list (default: my_new_collection). */
+  readonly VITE_FIRESTORE_MASTER_COLLECTION?: string
+  /** Firestore collection for today’s vehicle list (default: my_new_collection_1). */
+  readonly VITE_FIRESTORE_TODAY_COLLECTION?: string
 }
 
 interface ImportMeta {

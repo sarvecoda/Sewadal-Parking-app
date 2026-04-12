@@ -14,9 +14,14 @@ import {
 import type { VehicleData, VehicleDoc } from './types'
 import { VEHICLE_FIELD_MAX_LENGTH } from './types'
 
-/** Same collection ids as Android `VehicleRepository`. */
-const ALL_COLLECTION = 'your_collection'
-const TODAY_COLLECTION = 'your_collection1'
+/**
+ * Web vehicle collections (cloned from Android’s `your_collection` / `your_collection1`).
+ * Override with VITE_FIRESTORE_* only if you rotate names again; keep firestore.rules in sync.
+ */
+const ALL_COLLECTION =
+  import.meta.env.VITE_FIRESTORE_MASTER_COLLECTION?.trim() || 'my_new_collection'
+const TODAY_COLLECTION =
+  import.meta.env.VITE_FIRESTORE_TODAY_COLLECTION?.trim() || 'my_new_collection_1'
 
 /** Firestore allows at most 500 operations per batch. */
 const BATCH_DELETE_LIMIT = 450

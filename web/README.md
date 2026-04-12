@@ -1,11 +1,27 @@
 # SNS Parking (web)
 
-Mobile-first web client for the same Firestore data as the Android app (`your_collection` / `your_collection1`).
+Mobile-first web client. Live vehicle data uses **`my_new_collection`** / **`my_new_collection_1`** (cloned from the legacy `your_collection` / `your_collection1` used by the Android APK).
 
 ## Local setup
 
 1. Copy `.env.example` → `.env` and set Firebase Web app values (especially `VITE_FIREBASE_APP_ID`).
 2. `npm install` then `npm run dev`.
+
+### Migrating vehicle data (new collections, legacy Android stops seeing live data)
+
+Do this **before** deploying a build that reads `my_new_collection` / `my_new_collection_1`, or the site will list empty collections until the copy exists. (You can also clone in the Firebase Console instead of this script.)
+
+1. In Firebase Console → **Project settings** → **Service accounts** → **Generate new private key**. Store the JSON safely (do not commit it; `web/.gitignore` ignores common service-account filenames).
+2. From `web/`:
+
+   ```bash
+   export GOOGLE_APPLICATION_CREDENTIALS="/absolute/path/to/your-service-account.json"
+   npm run migrate:vehicles -- --dry-run
+   npm run migrate:vehicles
+   ```
+
+3. Deploy: `npm run deploy` (updates Hosting + Firestore rules so clients use the new paths).
+4. Confirm the web app shows vehicles. When you are sure, delete **`your_collection`** and **`your_collection1`** in the Firestore **Data** tab (optional; until then the old documents still exist but rules no longer grant client access to those paths).
 
 ## Sign-in (Firebase Authentication)
 
@@ -29,7 +45,7 @@ If **`VITE_LEGACY_LOGIN=true`** in `.env`, the app uses the legacy demo login an
 - unauthenticated **create** on `access_requests` (pending requests only),
 - **admin-only** read/update on `access_requests`,
 - **admin-only** read/write on `app_users`,
-- any signed-in user read/write on `your_collection` / `your_collection1` (same as before).
+- approved staff read/write on the web vehicle collections (see `firestore.rules`).
 
 If you already have custom rules in the console, **merge** these paths into your existing rules instead of overwriting blindly.
 

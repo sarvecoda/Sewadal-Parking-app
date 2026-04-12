@@ -39,12 +39,12 @@ service cloud.firestore {
       allow create, update, delete: if isParkingAdmin();
     }
 
-    // Vehicle lists: admin or approved staff only (pending-request accounts cannot read/write).
-    match /your_collection/{docId} {
+    // Vehicle lists (web app; Android APK still targets your_collection / your_collection1).
+    match /my_new_collection/{docId} {
       allow read, write: if isParkingAdmin() || isApprovedStaff();
     }
 
-    match /your_collection1/{docId} {
+    match /my_new_collection_1/{docId} {
       allow read, write: if isParkingAdmin() || isApprovedStaff();
     }
   }

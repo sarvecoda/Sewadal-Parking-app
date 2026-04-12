@@ -7,7 +7,8 @@ object VehicleRepository {
 
     private val db = FirebaseFirestore.getInstance()
 
-    private const val ALL_COLLECTION   = "your_collection"     // rename as you like
+    // Legacy collection names; hosted web uses my_new_collection / my_new_collection_1 after migration.
+    private const val ALL_COLLECTION   = "your_collection"
     private const val TODAY_COLLECTION = "your_collection1"
 
     suspend fun add(vehicle: VehicleData, today: Boolean) =
