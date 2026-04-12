@@ -9,12 +9,16 @@ Mobile-first web client for the same Firestore data as the Android app (`your_co
 
 ## Sign-in (Firebase Authentication)
 
-There is **no built-in username or password** in the app. You create the first (and every) account in the Firebase Console.
+### Create account (self-service)
+
+On the app, open **Create account**, enter your **email** and **password**. The app calls Firebase `createUserWithEmailAndPassword`—no need to add the user manually in the console. Firebase stores the full email; the profile **display name** is set to the part before `@` (e.g. `pat` from `pat@gmail.com`).
+
+Anyone with the app link can register unless you add server-side restrictions later (e.g. Cloud Function or allowlist).
 
 ### First login — what to use?
 
-1. **Authentication** → **Sign-in method** → enable **Email/Password**.
-2. **Authentication** → **Users** → **Add user** with an **email** and password. (Firebase does not offer “username only”—always a full email; this app maps a short username to that email.)
+1. **Authentication** → **Sign-in method** → enable **Email/Password** (required for sign-up and email/password sign-in).
+2. **Optional:** **Authentication** → **Users** → **Add user** if you prefer to create accounts in the console instead of self-service.
 
 **Username sign-in (no `@` typed in the app):** the app builds the Firebase email as **`{username}@{domain}`**:
 
@@ -38,7 +42,7 @@ If you prefer addresses like `someone@park.yourorg.com`, set **`VITE_LOGIN_EMAIL
 - **`VITE_PASSWORD_RESET_EMAIL`** if set in `web/.env` (always that account), or  
 - otherwise the account for the **username** you typed above (same mapping as sign-in).
 
-No modal. If Email/Password is disabled in Firebase, sign-in and reset both fail until you enable it (see error link on the login page).
+No modal. If Email/Password is disabled in Firebase, sign-in, sign-up, and reset all fail until you enable it.
 
 ### Point password-reset emails at this app (recommended)
 

@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import {
   browserLocalPersistence,
+  createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
   setPersistence,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
+  updateProfile,
 } from 'firebase/auth'
 import { formatAuthError } from '../authErrors'
 import {
@@ -48,19 +50,24 @@ function maskEmailForUi(email: string): string {
   return `${head}•••@${domain}`
 }
 
-/** Starter form defaults; Firebase user must use the same email this app resolves to. */
-const STARTER_USERNAME = 'snmparking'
-const STARTER_PASSWORD = 'nirankar'
+function looksLikeEmail(s: string): boolean {
+  const t = s.trim()
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)
+}
+
+type AuthMode = 'signIn' | 'signUp'
 
 /**
- * Username + password (domain from `VITE_LOGIN_EMAIL_DOMAIN` or `VITE_FIREBASE_AUTH_DOMAIN`),
- * or full email if value contains `@`.
- * Forgot password: sends Firebase reset to `VITE_PASSWORD_RESET_EMAIL` if set, else to the
- * account for the username typed above.
+ * Sign in: email or short username + password (see authIdentity).
+ * Create account: full email + password — creates Firebase user and sets display name to local part.
  */
 export function LoginScreen() {
-  const [username, setUsername] = useState(STARTER_USERNAME)
-  const [password, setPassword] = useState(STARTER_PASSWORD)
+  const [authMode, setAuthMode] = useState<AuthMode>('signIn')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [signupEmail, setSignupEmail] = useState('')
+  const [signupPassword, setSignupPassword] = useState('')
+  const [signupPassword2, setSignupPassword2] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -85,6 +92,13 @@ export function LoginScreen() {
     }
   }, [])
 
+  function switchMode(next: AuthMode) {
+    setAuthMode(next)
+    setError('')
+    setResetFeedback(null)
+    setResetNote('')
+  }
+
   function resolveOrSetError(): string | null {
     try {
       return resolveSignInIdentifier(username)
@@ -92,10 +106,10 @@ export function LoginScreen() {
       if (e instanceof Error) {
         if (e.message === 'MISSING_EMAIL_DOMAIN') {
           setError(
-            'Missing email domain for username sign-in. Set VITE_FIREBASE_AUTH_DOMAIN (from Firebase) or VITE_LOGIN_EMAIL_DOMAIN in web/.env, then rebuild.',
+            'Missing email domain for username sign-in. Set VITE_FIREBASE_AUTH_DOMAIN (from Firebase) or VITE_LOGIN_EMAIL_DOMAIN in web/.env, then rebuild—or use your full email here.',
           )
         } else if (e.message === 'EMPTY_USERNAME') {
-          setError('Enter your username.')
+          setError('Enter your email or username.')
         } else {
           setError(e.message)
         }
@@ -104,7 +118,7 @@ export function LoginScreen() {
     }
   }
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSignIn(e: FormEvent) {
     e.preventDefault()
     setError('')
     const authEmail = resolveOrSetError()
@@ -120,9 +134,43 @@ export function LoginScreen() {
     }
   }
 
+  async function handleSignUp(e: FormEvent) {
+    e.preventDefault()
+    setError('')
+    const email = signupEmail.trim().toLowerCase()
+    if (!looksLikeEmail(email)) {
+      setError('Enter a valid email (include @ and domain, e.g. you@gmail.com).')
+      return
+    }
+    if (signupPassword.length < 6) {
+      setError('Password must be at least 6 characters (8 or more is better).')
+      return
+    }
+    if (signupPassword !== signupPassword2) {
+      setError('Passwords do not match.')
+      return
+    }
+    setBusy(true)
+    try {
+      const auth = getFirebaseAuth()
+      const cred = await createUserWithEmailAndPassword(auth, email, signupPassword)
+      const localPart = email.split('@')[0] ?? email
+      await updateProfile(cred.user, { displayName: localPart })
+    } catch (err) {
+      setError(formatAuthError(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function applyGeneratedPassword() {
     const next = generateStrongPassword()
-    setPassword(next)
+    if (authMode === 'signUp') {
+      setSignupPassword(next)
+      setSignupPassword2(next)
+    } else {
+      setPassword(next)
+    }
     setShowPassword(true)
     void navigator.clipboard.writeText(next).catch(() => {})
     setError('')
@@ -136,6 +184,14 @@ export function LoginScreen() {
       let target: string
       if (fixedResetEmail) {
         target = fixedResetEmail
+      } else if (authMode === 'signUp') {
+        const e = signupEmail.trim().toLowerCase()
+        if (!looksLikeEmail(e)) {
+          setResetFeedback('err')
+          setResetNote('Enter your email on this screen first, then tap Forgot password again.')
+          return
+        }
+        target = e
       } else {
         try {
           target = resolveSignInIdentifier(username)
@@ -143,8 +199,8 @@ export function LoginScreen() {
           setResetFeedback('err')
           setResetNote(
             domainConfigured
-              ? 'Enter your username above first (same one you use to sign in), then tap Forgot password again.'
-              : 'Set VITE_FIREBASE_AUTH_DOMAIN or VITE_LOGIN_EMAIL_DOMAIN in web/.env, or set VITE_PASSWORD_RESET_EMAIL to always send resets to one address.',
+              ? 'Enter your email or username above first, then tap Forgot password again.'
+              : 'Enter your full email above, or set VITE_FIREBASE_AUTH_DOMAIN / VITE_LOGIN_EMAIL_DOMAIN in web/.env for short usernames.',
           )
           return
         }
@@ -157,7 +213,7 @@ export function LoginScreen() {
         if (methods.length > 0 && !methods.includes('password')) {
           setResetFeedback('err')
           setResetNote(
-            'That address is not set up for a parking password (for example it may be Google-only). Use an account that has Email/Password in Firebase, or type the full email you were given for this app.',
+            'That address is not set up for a parking password (for example it may be Google-only). Use an account that has Email/Password in Firebase, or type the full email you use for this app.',
           )
           return
         }
@@ -181,96 +237,227 @@ export function LoginScreen() {
       <div className="login-card">
         <h1 className="login-brand">SNM Bangalore</h1>
         <p className="login-sub">Parking</p>
-        <p className="login-note login-note--muted">
-          Firebase always stores a <strong>full email</strong> for each user (you cannot add only a
-          short name there). Here you usually type just the part <strong>before @</strong>; the app
-          fills in the rest to match your Firebase account. Or paste the whole email in the username
-          field.
-        </p>
 
-        <form className="login-form" onSubmit={handleSubmit}>
-          <label className="field-label" htmlFor="login-username">
-            Username
-          </label>
-          <input
-            id="login-username"
-            className="field-input"
-            name="username"
-            type="text"
-            autoComplete="username"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            placeholder={domainConfigured ? 'e.g. admin' : 'email or username'}
-            value={username}
-            onChange={(e) => {
-              setUsername(e.target.value)
-              setError('')
-              setResetFeedback(null)
-              setResetNote('')
-            }}
-          />
-
-          <div className="login-password-row">
-            <label className="field-label login-password-label" htmlFor="login-password">
-              Password
-            </label>
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => setShowPassword((v) => !v)}
-            >
-              {showPassword ? 'Hide' : 'Show'}
-            </button>
-          </div>
-          <input
-            id="login-password"
-            className="field-input"
-            name="password"
-            type={showPassword ? 'text' : 'password'}
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value)
-              setError('')
-            }}
-          />
-
-          <div className="login-row-actions">
-            <button
-              type="button"
-              className="link-button"
-              disabled={resetBusy}
-              onClick={() => void sendPasswordReset()}
-            >
-              {resetBusy ? 'Sending…' : 'Forgot password?'}
-            </button>
-            <button type="button" className="link-button" onClick={applyGeneratedPassword}>
-              Suggest strong password
-            </button>
-          </div>
-
-          {resetFeedback && resetNote ? (
-            <p
-              className={
-                resetFeedback === 'err'
-                  ? 'form-error login-reset-inline'
-                  : 'login-reset-inline login-reset-inline--ok'
-              }
-              role={resetFeedback === 'err' ? 'alert' : 'status'}
-            >
-              {resetNote}
-            </p>
-          ) : null}
-
-          {error ? (
-            <p className="login-error">{error}</p>
-          ) : null}
-
-          <button type="submit" className="btn btn-login" disabled={busy}>
-            {busy ? 'Signing in…' : 'Sign in'}
+        <div className="login-tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={authMode === 'signIn'}
+            className={`login-tab${authMode === 'signIn' ? ' login-tab--active' : ''}`}
+            onClick={() => switchMode('signIn')}
+          >
+            Sign in
           </button>
-        </form>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={authMode === 'signUp'}
+            className={`login-tab${authMode === 'signUp' ? ' login-tab--active' : ''}`}
+            onClick={() => switchMode('signUp')}
+          >
+            Create account
+          </button>
+        </div>
+
+        {authMode === 'signIn' ? (
+          <>
+            <p className="login-note login-note--muted">
+              Use your <strong>email</strong> (full address) or a short <strong>username</strong> if
+              your account was created that way. Password is the one you chose (or were given).
+            </p>
+            <form className="login-form" onSubmit={(e) => void handleSignIn(e)}>
+              <label className="field-label" htmlFor="login-username">
+                Email or username
+              </label>
+              <input
+                id="login-username"
+                className="field-input"
+                name="username"
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder={domainConfigured ? 'e.g. admin or you@email.com' : 'your@email.com'}
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value)
+                  setError('')
+                  setResetFeedback(null)
+                  setResetNote('')
+                }}
+              />
+
+              <div className="login-password-row">
+                <label className="field-label login-password-label" htmlFor="login-password">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => setShowPassword((v) => !v)}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <input
+                id="login-password"
+                className="field-input"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  setError('')
+                }}
+              />
+
+              <div className="login-row-actions">
+                <button
+                  type="button"
+                  className="link-button"
+                  disabled={resetBusy}
+                  onClick={() => void sendPasswordReset()}
+                >
+                  {resetBusy ? 'Sending…' : 'Forgot password?'}
+                </button>
+                <button type="button" className="link-button" onClick={applyGeneratedPassword}>
+                  Suggest strong password
+                </button>
+              </div>
+
+              {resetFeedback && resetNote ? (
+                <p
+                  className={
+                    resetFeedback === 'err'
+                      ? 'form-error login-reset-inline'
+                      : 'login-reset-inline login-reset-inline--ok'
+                  }
+                  role={resetFeedback === 'err' ? 'alert' : 'status'}
+                >
+                  {resetNote}
+                </p>
+              ) : null}
+
+              {error ? (
+                <p className="login-error">{error}</p>
+              ) : null}
+
+              <button type="submit" className="btn btn-login" disabled={busy}>
+                {busy ? 'Signing in…' : 'Sign in'}
+              </button>
+            </form>
+          </>
+        ) : (
+          <>
+            <p className="login-note login-note--muted">
+              Add yourself here with your <strong>email</strong> and a password—we create your
+              account in Firebase. Your <strong>username</strong> in the app will be the part
+              before <strong>@</strong> (e.g. <code className="login-code">pat</code> from{' '}
+              <code className="login-code">pat@gmail.com</code>).
+            </p>
+            <form className="login-form" onSubmit={(e) => void handleSignUp(e)}>
+              <label className="field-label" htmlFor="signup-email">
+                Email
+              </label>
+              <input
+                id="signup-email"
+                className="field-input"
+                name="email"
+                type="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder="you@example.com"
+                value={signupEmail}
+                onChange={(e) => {
+                  setSignupEmail(e.target.value)
+                  setError('')
+                  setResetFeedback(null)
+                  setResetNote('')
+                }}
+              />
+
+              <div className="login-password-row">
+                <label className="field-label login-password-label" htmlFor="signup-password">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => setShowPassword((v) => !v)}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <input
+                id="signup-password"
+                className="field-input"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                value={signupPassword}
+                onChange={(e) => {
+                  setSignupPassword(e.target.value)
+                  setError('')
+                }}
+              />
+
+              <label className="field-label" htmlFor="signup-password2">
+                Confirm password
+              </label>
+              <input
+                id="signup-password2"
+                className="field-input"
+                name="password2"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                value={signupPassword2}
+                onChange={(e) => {
+                  setSignupPassword2(e.target.value)
+                  setError('')
+                }}
+              />
+
+              <div className="login-row-actions">
+                <button
+                  type="button"
+                  className="link-button"
+                  disabled={resetBusy}
+                  onClick={() => void sendPasswordReset()}
+                >
+                  {resetBusy ? 'Sending…' : 'Forgot password?'}
+                </button>
+                <button type="button" className="link-button" onClick={applyGeneratedPassword}>
+                  Suggest strong password
+                </button>
+              </div>
+
+              {resetFeedback && resetNote ? (
+                <p
+                  className={
+                    resetFeedback === 'err'
+                      ? 'form-error login-reset-inline'
+                      : 'login-reset-inline login-reset-inline--ok'
+                  }
+                  role={resetFeedback === 'err' ? 'alert' : 'status'}
+                >
+                  {resetNote}
+                </p>
+              ) : null}
+
+              {error ? (
+                <p className="login-error">{error}</p>
+              ) : null}
+
+              <button type="submit" className="btn btn-login" disabled={busy}>
+                {busy ? 'Creating account…' : 'Create account'}
+              </button>
+            </form>
+          </>
+        )}
       </div>
     </div>
   )
