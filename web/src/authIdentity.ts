@@ -1,8 +1,19 @@
 /**
  * Staff sign in with a short username; Firebase still stores an email.
- * Set `VITE_LOGIN_EMAIL_DOMAIN` to the domain part of those accounts (e.g. `park.yourorg.com`).
+ * - If `VITE_LOGIN_EMAIL_DOMAIN` is set, usernames map to `user@that-domain`.
+ * - Otherwise the domain defaults to `VITE_FIREBASE_AUTH_DOMAIN` (e.g. `project.firebaseapp.com`),
+ *   so `snmparking` → `snmparking@project.firebaseapp.com` — create that exact user in Firebase.
  * If someone types a full address (contains `@`), it is used as-is.
  */
+
+/** Domain used after `@` for username-only sign-in (explicit env or Firebase auth host). */
+export function getEffectiveLoginEmailDomain(): string | undefined {
+  const explicit = import.meta.env.VITE_LOGIN_EMAIL_DOMAIN?.trim()
+  if (explicit) return explicit
+  const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN?.trim().toLowerCase()
+  if (authDomain) return authDomain
+  return undefined
+}
 
 export function normalizeLocalPart(raw: string): string {
   return raw
@@ -16,7 +27,7 @@ export function resolveSignInIdentifier(raw: string): string {
   const t = raw.trim().toLowerCase()
   if (t.includes('@')) return raw.trim()
 
-  const domain = import.meta.env.VITE_LOGIN_EMAIL_DOMAIN?.trim()
+  const domain = getEffectiveLoginEmailDomain()
   if (!domain) {
     throw new Error('MISSING_EMAIL_DOMAIN')
   }
@@ -28,5 +39,5 @@ export function resolveSignInIdentifier(raw: string): string {
 }
 
 export function isEmailDomainConfigured(): boolean {
-  return Boolean(import.meta.env.VITE_LOGIN_EMAIL_DOMAIN?.trim())
+  return Boolean(getEffectiveLoginEmailDomain())
 }

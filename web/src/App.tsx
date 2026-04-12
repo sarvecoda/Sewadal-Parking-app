@@ -4,10 +4,20 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { LegacyLoginScreen } from './components/LegacyLoginScreen'
 import { LoginScreen } from './components/LoginScreen'
 import { MainScreen } from './components/MainScreen'
+import { PasswordResetFromEmail } from './components/PasswordResetFromEmail'
 import { getFirebaseAuth, getFirestoreDb, isFirebaseConfigured } from './firebase'
+
+function readPasswordResetOobFromUrl(): string | null {
+  if (typeof window === 'undefined') return null
+  const p = new URLSearchParams(window.location.search)
+  return p.get('mode') === 'resetPassword' && p.get('oobCode') ? p.get('oobCode')! : null
+}
 
 export default function App() {
   const legacyLogin = import.meta.env.VITE_LEGACY_LOGIN === 'true'
+  const [passwordResetOob, setPasswordResetOob] = useState<string | null>(
+    readPasswordResetOobFromUrl,
+  )
 
   const [legacyOk, setLegacyOk] = useState(
     () => legacyLogin && sessionStorage.getItem('sns_parking_legacy_session') === '1',
@@ -47,9 +57,8 @@ export default function App() {
         </p>
         <p className="setup-muted">
           For sign-in: enable <strong>Authentication → Sign-in method → Email/Password</strong>, add
-          users under <strong>Authentication → Users</strong>, and set{' '}
-          <code>VITE_LOGIN_EMAIL_DOMAIN</code> in <code>web/.env</code> for username-only login (see{' '}
-          <code>web/README.md</code>).
+          users under <strong>Authentication → Users</strong> (see <code>web/README.md</code> for
+          username → email mapping).
         </p>
       </div>
     )
@@ -63,6 +72,15 @@ export default function App() {
           Could not initialize Firebase. Check <code>web/.env</code> values.
         </p>
       </div>
+    )
+  }
+
+  if (!legacyLogin && passwordResetOob) {
+    return (
+      <PasswordResetFromEmail
+        oobCode={passwordResetOob}
+        onFinished={() => setPasswordResetOob(null)}
+      />
     )
   }
 

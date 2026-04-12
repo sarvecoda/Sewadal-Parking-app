@@ -43,7 +43,8 @@ const STARTER_USERNAME = 'snmparking'
 const STARTER_PASSWORD = 'nirankar'
 
 /**
- * Username + password (see `VITE_LOGIN_EMAIL_DOMAIN`), or full email if value contains `@`.
+ * Username + password (domain from `VITE_LOGIN_EMAIL_DOMAIN` or `VITE_FIREBASE_AUTH_DOMAIN`),
+ * or full email if value contains `@`.
  * Forgot password: sends Firebase reset to `VITE_PASSWORD_RESET_EMAIL` if set, else to the
  * account for the username typed above.
  */
@@ -81,7 +82,7 @@ export function LoginScreen() {
       if (e instanceof Error) {
         if (e.message === 'MISSING_EMAIL_DOMAIN') {
           setError(
-            'Set VITE_LOGIN_EMAIL_DOMAIN in web/.env (same domain as Firebase user emails).',
+            'Missing email domain for username sign-in. Set VITE_FIREBASE_AUTH_DOMAIN (from Firebase) or VITE_LOGIN_EMAIL_DOMAIN in web/.env, then rebuild.',
           )
         } else if (e.message === 'EMPTY_USERNAME') {
           setError('Enter your username.')
@@ -133,7 +134,7 @@ export function LoginScreen() {
           setResetNote(
             domainConfigured
               ? 'Enter your username above first (same one you use to sign in), then tap Forgot password again.'
-              : 'Set VITE_LOGIN_EMAIL_DOMAIN in web/.env, or set VITE_PASSWORD_RESET_EMAIL to always send resets to one address.',
+              : 'Set VITE_FIREBASE_AUTH_DOMAIN or VITE_LOGIN_EMAIL_DOMAIN in web/.env, or set VITE_PASSWORD_RESET_EMAIL to always send resets to one address.',
           )
           return
         }

@@ -222,6 +222,10 @@ body {
   cursor: pointer;
 }
 
+.login-reset-cancel {
+  margin-top: 0.65rem;
+}
+
 .link-button:hover {
   color: #fff;
 }

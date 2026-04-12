@@ -13,23 +13,23 @@ There is **no built-in username or password** in the app. You create the first (
 
 ### First login — what to use?
 
-1. Open [Firebase Console](https://console.firebase.google.com/) → your project → **Authentication** → **Users** → **Add user**.
-2. Enter an **email** (this is only stored in Firebase; staff can still sign in with the **part before `@`** as username if you configure the domain below).
-   - Example: create `admin@park.yourorg.com` and set a temporary password.
-3. In `web/.env` set **`VITE_LOGIN_EMAIL_DOMAIN=park.yourorg.com`** (same domain as that email, no `@`).
-4. On the app login screen: **Username** = `admin` (the part before `@`), **Password** = the password you just set.
+1. **Authentication** → **Sign-in method** → enable **Email/Password**.
+2. **Authentication** → **Users** → **Add user** with an **email** and password.
 
-Anyone else: add another user the same way (e.g. `mandeep@park.yourorg.com`); they sign in with username **`mandeep`**.
+**Username sign-in (no `@` typed in the app):** the app builds the Firebase email as **`{username}@{domain}`**:
+
+- If **`VITE_LOGIN_EMAIL_DOMAIN`** is set in `web/.env`, `domain` is that value (e.g. `park.yourorg.com` → user `admin` signs in as `admin@park.yourorg.com`).
+- If it is **not** set, `domain` defaults to **`VITE_FIREBASE_AUTH_DOMAIN`** from your Firebase Web config (usually `your-project-id.firebaseapp.com`). Example: create the user **`snmparking@sns-parking-app-blr-d40c7.firebaseapp.com`** (replace with your project’s auth domain) so the login username **`snmparking`** works.
+
+Rebuild / redeploy after changing `.env`.
+
+**Full email still works:** if someone types a value with `@` in the username field, it is used as-is.
 
 **Optional:** set `VITE_LEGACY_LOGIN=true` for the old fixed **nirankar / nirankar** demo only while migrating.
 
-### One-time setup
+### One-time setup (custom domain for emails)
 
-1. **Authentication** → **Sign-in method** → enable **Email/Password**.
-2. Pick a domain you control so every user email looks like `someone@park.yourorg.com`.
-3. Set **`VITE_LOGIN_EMAIL_DOMAIN=park.yourorg.com`** in `web/.env`. Rebuild / redeploy after changes.
-
-**Full email still works:** if someone types a value with `@`, it is used as-is.
+If you prefer addresses like `someone@park.yourorg.com`, set **`VITE_LOGIN_EMAIL_DOMAIN=park.yourorg.com`** in `web/.env` and create Firebase users with that domain.
 
 ### Forgot password
 
@@ -40,7 +40,15 @@ Anyone else: add another user the same way (e.g. `mandeep@park.yourorg.com`); th
 
 No modal. If Email/Password is disabled in Firebase, sign-in and reset both fail until you enable it (see error link on the login page).
 
-If reset links expire before you click, an **email scanner** may have opened them first; try again from a desktop browser or mark mail as “Not spam”.
+### Point password-reset emails at this app (recommended)
+
+Firebase’s default reset link often hits **inbox link preview / security scanners** first, which uses the one-time code and then shows “expired” or “already been used”.
+
+1. Firebase Console → **Authentication** → **Templates** → **Password reset**.
+2. Set **Action URL** / **Customize action URL** to your **Hosting** root, e.g. `https://sns-parking-app-blr-d40c7.web.app/` (must appear under **Authentication** → **Settings** → **Authorized domains**).
+3. Save. New reset emails open this web app (`?mode=resetPassword&oobCode=…`) so you choose a new password here.
+
+If you keep the default Firebase reset page, try opening the link from a phone mail app or disable Safelinks / link tracking for that message, then request a **new** reset from the login screen.
 
 **Suggest strong password:** fills the password field and copies a random password to the clipboard.
 

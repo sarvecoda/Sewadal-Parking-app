@@ -10,8 +10,8 @@ interface ImportMetaEnv {
   /** Set to `"true"` to use the old fixed demo login instead of Firebase Email/Password. */
   readonly VITE_LEGACY_LOGIN?: string
   /**
-   * Domain for username-only sign-in (e.g. `park.yourorg.com`). Firebase users must exist as
-   * `username@park.yourorg.com`. Omit only if everyone types a full email in the username field.
+   * Optional domain for username-only sign-in (e.g. `park.yourorg.com`). If omitted, the app uses
+   * `VITE_FIREBASE_AUTH_DOMAIN` so `user` maps to `user@{project}.firebaseapp.com`.
    */
   readonly VITE_LOGIN_EMAIL_DOMAIN?: string
   /**
