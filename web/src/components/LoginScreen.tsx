@@ -13,6 +13,7 @@ import {
 } from '../authIdentity'
 import { submitAccessRequestFirestore } from '../accessControlRepository'
 import { getFirebaseAuth, getFirestoreDb } from '../firebase'
+import { pickGoogleAccountEmail } from '../googleAccountPicker'
 import { formatFirestoreError } from '../vehicleRepository'
 
 function generateStrongPassword(length = 18): string {
@@ -40,6 +41,7 @@ function generateStrongPassword(length = 18): string {
 }
 
 const fixedResetEmail = import.meta.env.VITE_PASSWORD_RESET_EMAIL?.trim() ?? ''
+const googleOAuthWebClientId = import.meta.env.VITE_GOOGLE_OAUTH_WEB_CLIENT_ID?.trim() ?? ''
 
 function maskEmailForUi(email: string): string {
   const at = email.indexOf('@')
@@ -77,6 +79,7 @@ export function LoginScreen() {
   const [resetBusy, setResetBusy] = useState(false)
   const [resetFeedback, setResetFeedback] = useState<'ok' | 'err' | null>(null)
   const [resetNote, setResetNote] = useState('')
+  const [googlePickBusy, setGooglePickBusy] = useState(false)
 
   const domainConfigured = isEmailDomainConfigured()
 
@@ -146,6 +149,29 @@ export function LoginScreen() {
       err && typeof err === 'object' && 'code' in err ? String((err as { code?: string }).code) : ''
     if (code.startsWith('auth/')) return formatAuthError(err)
     return formatFirestoreError(err)
+  }
+
+  async function fillEmailFromGoogle(which: 'signIn' | 'requestAccess') {
+    if (!googleOAuthWebClientId) return
+    setGooglePickBusy(true)
+    setError('')
+    setResetFeedback(null)
+    setResetNote('')
+    try {
+      const email = await pickGoogleAccountEmail(googleOAuthWebClientId)
+      if (email) {
+        if (which === 'signIn') {
+          setUsername(email)
+        } else {
+          setRequestEmail(email.toLowerCase())
+          setRequestOk('')
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not use Google account picker.')
+    } finally {
+      setGooglePickBusy(false)
+    }
   }
 
   async function handleRequestAccess(e: FormEvent) {
@@ -292,6 +318,22 @@ export function LoginScreen() {
                   setResetNote('')
                 }}
               />
+              {googleOAuthWebClientId ? (
+                <p className="login-microcopy">
+                  <button
+                    type="button"
+                    className="link-button"
+                    disabled={busy || googlePickBusy}
+                    onClick={() => void fillEmailFromGoogle('signIn')}
+                  >
+                    {googlePickBusy ? 'Opening Google…' : 'Choose Google account for email'}
+                  </button>
+                  <span className="login-microcopy__hint">
+                    {' '}
+                    — opens Google’s account list, then fills this field with that email.
+                  </span>
+                </p>
+              ) : null}
 
               <div className="login-password-row">
                 <label className="field-label login-password-label" htmlFor="login-password">
@@ -383,6 +425,22 @@ export function LoginScreen() {
                   setRequestOk('')
                 }}
               />
+              {googleOAuthWebClientId ? (
+                <p className="login-microcopy">
+                  <button
+                    type="button"
+                    className="link-button"
+                    disabled={busy || googlePickBusy}
+                    onClick={() => void fillEmailFromGoogle('requestAccess')}
+                  >
+                    {googlePickBusy ? 'Opening Google…' : 'Choose Google account for email'}
+                  </button>
+                  <span className="login-microcopy__hint">
+                    {' '}
+                    — pick the Google profile you want to use for this request.
+                  </span>
+                </p>
+              ) : null}
 
               <div className="login-password-row">
                 <label className="field-label login-password-label" htmlFor="request-password">

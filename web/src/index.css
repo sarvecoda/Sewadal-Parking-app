@@ -276,6 +276,10 @@ body {
   color: rgba(245, 240, 230, 0.75);
 }
 
+.login-microcopy__hint {
+  font-weight: 400;
+}
+
 .login-reset-msg {
   margin-top: 0.75rem;
   font-size: 0.86rem;

@@ -19,6 +19,12 @@ interface ImportMetaEnv {
    * Must be an existing Firebase Authentication user email.
    */
   readonly VITE_PASSWORD_RESET_EMAIL?: string
+  /**
+   * OAuth 2.0 **Web client** ID (ends in `.apps.googleusercontent.com`) from Google Cloud Console
+   * → APIs & Credentials → OAuth client (Web application). Add this app’s URL to **Authorized
+   * JavaScript origins** so “Choose Google account” can fill the email field.
+   */
+  readonly VITE_GOOGLE_OAUTH_WEB_CLIENT_ID?: string
 }
 
 interface ImportMeta {
