@@ -45,9 +45,14 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
   min-height: 100dvh;
+  min-height: 100svh;
   background:
     radial-gradient(100% 70% at 50% -15%, #2a241c 0%, transparent 55%),
     linear-gradient(180deg, var(--bg-body) 0%, var(--bg-deep) 100%);
@@ -55,10 +60,26 @@ body {
 
 #root {
   min-height: 100dvh;
+  min-height: 100svh;
   padding: calc(14px + var(--safe-top)) 14px calc(20px + var(--safe-bottom));
-  max-width: 480px;
+  padding-left: max(14px, env(safe-area-inset-left, 0px));
+  padding-right: max(14px, env(safe-area-inset-right, 0px));
+  max-width: 520px;
   margin: 0 auto;
   color: var(--text);
+}
+
+/* Phone: edge-to-edge like a native shell (no side letterboxing) */
+@media (max-width: 640px) {
+  #root {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    padding: calc(10px + env(safe-area-inset-top, 0px))
+      max(10px, env(safe-area-inset-right, 0px))
+      calc(12px + env(safe-area-inset-bottom, 0px))
+      max(10px, env(safe-area-inset-left, 0px));
+  }
 }
 
 .sr-only {
@@ -243,6 +264,15 @@ body {
   padding: 1.1rem 1rem 1.35rem;
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border);
+}
+
+@media (max-width: 640px) {
+  .main-root {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    padding: 1rem 0.75rem 1.25rem;
+  }
 }
 
 .main-header {
@@ -584,6 +614,27 @@ body {
   .modal-backdrop {
     align-items: center;
     padding: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .modal-backdrop {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  @media (min-height: 560px) {
+    .modal-backdrop {
+      padding-top: 16px;
+      padding-bottom: 16px;
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+    }
+  }
+
+  .modal-sheet {
+    max-width: none;
+    width: 100%;
   }
 }
 

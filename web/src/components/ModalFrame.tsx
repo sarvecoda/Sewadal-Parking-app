@@ -4,6 +4,7 @@ import {
   type MouseEvent,
   type ReactNode,
 } from 'react'
+import { subscribeBodyScrollLock } from '../bodyScrollLock'
 
 type Props = {
   title: string
@@ -42,13 +43,7 @@ export function ModalFrame({
     if (!locked) onClose()
   }, [locked, onClose])
 
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [])
+  useEffect(() => subscribeBodyScrollLock(), [])
 
   return (
     <div
