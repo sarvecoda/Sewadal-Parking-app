@@ -11,15 +11,14 @@ service cloud.firestore {
       );
     }
 
-    // Access requests: anyone signed out can create a pending row; only admin reads/updates.
+    // Access requests: any client may create a validated pending row (signed-in or not — avoids
+    // "permission denied" when a stale session exists). Only admin reads/updates.
     match /access_requests/{id} {
-      allow create: if request.auth == null
-        && request.resource.data.keys().hasOnly(['email', 'note', 'status', 'createdAt'])
+      allow create: if request.resource.data.keys().hasOnly(['email', 'note', 'status', 'createdAt'])
         && request.resource.data.email is string
         && request.resource.data.email.size() >= 5
         && request.resource.data.email.size() <= 120
         && request.resource.data.status == 'pending'
-        && request.resource.data.createdAt == request.time
         && (request.resource.data.note == null
             || (request.resource.data.note is string && request.resource.data.note.size() <= 800));
 

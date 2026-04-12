@@ -335,8 +335,8 @@ export function LoginScreen() {
           <>
             <p className="login-note login-note--muted">
               New staff: enter your <strong>work email</strong> and an optional note. Your account is
-              created only after the <strong>admin</strong> approves the request (you must be signed
-              out here). You will then get a link to choose your password.
+              created only after the <strong>admin</strong> approves the request. You will then get
+              an email to choose your password.
             </p>
             <form className="login-form" onSubmit={(e) => void handleRequestAccess(e)}>
               <label className="field-label" htmlFor="request-email">

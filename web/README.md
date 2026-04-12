@@ -11,7 +11,7 @@ Mobile-first web client for the same Firestore data as the Android app (`your_co
 
 ### Admin approval (Spark / no paid Cloud Functions)
 
-New staff use **Request access** (email + optional note) while **signed out**. A row is added to Firestore `access_requests`. Nothing is created in **Authentication** until the **admin** signs in and opens **Manage access** → **Approve**. The app then creates the user with a secondary Firebase client and triggers Firebase’s **password reset email** to that address so they can set a password and sign in.
+New staff use **Request access** (email + optional note). A row is added to Firestore `access_requests` (works even if a Firebase session is still open in the browser). Nothing is created in **Authentication** until the **admin** signs in and opens **Manage access** → **Approve**. The app then creates the user with a secondary Firebase client and triggers Firebase’s **password reset email** to that address so they can set a password and sign in.
 
 The admin account is recognized by **Firebase Auth UID** and/or **email** (`sarveshkum9999@gmail.com`):
 
