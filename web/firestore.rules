@@ -4,7 +4,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isParkingAdmin() {
-      return request.auth != null && request.auth.uid == 'qn5SgVc62lckW5pJmpNwV1Oqv9I2';
+      return request.auth != null && request.auth.uid == 'Ayisu6zH1OgqQ4XM9ggk6y1mpxS2';
     }
 
     // Access requests: anyone signed out can create a pending row; only admin reads/updates.

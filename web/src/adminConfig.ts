@@ -1,7 +1,7 @@
 import type { User } from 'firebase/auth'
 
 /** Parking admin — only this account sees “Manage access”. Must match `web/firestore.rules` (`isParkingAdmin`). */
-export const ADMIN_UID = 'qn5SgVc62lckW5pJmpNwV1Oqv9I2'
+export const ADMIN_UID = 'Ayisu6zH1OgqQ4XM9ggk6y1mpxS2'
 
 export const ADMIN_EMAIL = 'sarveshkum9999@gmail.com'
 
