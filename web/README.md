@@ -1,73 +1,38 @@
-# React + TypeScript + Vite
+# SNS Parking (web)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Mobile-first web client for the same Firestore data as the Android app (`your_collection` / `your_collection1`).
 
-Currently, two official plugins are available:
+## Local setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Copy `.env.example` → `.env` and set Firebase Web app values (especially `VITE_FIREBASE_APP_ID`).
+2. `npm install` then `npm run dev`.
 
-## React Compiler
+## Firebase Hosting (same idea as [Book Inventory on web.app](https://book-inventory-app-f1a77.web.app))
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+This project deploys the **built** `dist/` folder to **Firebase Hosting** in project **`sns-parking-app-blr-d40c7`**.
 
-## Expanding the ESLint configuration
+1. Install deps: `npm install`
+2. Ensure `web/.env` exists so `npm run build` embeds your Firebase config (`.env` is not committed).
+3. Log in once: `npx firebase login` (use the GitHub/Google account that owns this Firebase project).
+4. Deploy: `npm run deploy`
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+After the first deploy, the app is available at:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **https://sns-parking-app-blr-d40c7.web.app**
+- **https://sns-parking-app-blr-d40c7.firebaseapp.com**
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+In [Firebase Console](https://console.firebase.google.com/) → your project → **Hosting**, you can add a **custom domain** later.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### Firestore / API access from the hosted URL
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- In **Firestore → Rules**, allow access from this web client the same way you do for Android (or tighten with auth later).
+- If your **Google Cloud API key** is restricted by HTTP referrer, add  
+  `https://sns-parking-app-blr-d40c7.web.app/*` (and `firebaseapp.com` if needed).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Scripts
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+| Command        | Purpose                          |
+| -------------- | -------------------------------- |
+| `npm run dev`  | Local development                |
+| `npm run build`| Production build → `dist/`       |
+| `npm run deploy` | Build + `firebase deploy --only hosting` |
