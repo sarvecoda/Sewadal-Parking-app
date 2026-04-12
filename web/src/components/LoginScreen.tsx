@@ -16,30 +16,6 @@ import { getFirebaseAuth, getFirestoreDb } from '../firebase'
 import { pickGoogleAccountEmail } from '../googleAccountPicker'
 import { formatFirestoreError } from '../vehicleRepository'
 
-function generateStrongPassword(length = 18): string {
-  const lower = 'abcdefghjkmnpqrstuvwxyz'
-  const upper = 'ABCDEFGHJKMNPQRSTUVWXYZ'
-  const digits = '23456789'
-  const symbols = '!@#$%&*-'
-  const all = lower + upper + digits + symbols
-  const out = new Uint32Array(length)
-  crypto.getRandomValues(out)
-  let s = ''
-  s += lower[out[0]! % lower.length]
-  s += upper[out[1]! % upper.length]
-  s += digits[out[2]! % digits.length]
-  s += symbols[out[3]! % symbols.length]
-  for (let i = 4; i < length; i++) {
-    s += all[out[i]! % all.length]
-  }
-  const arr = s.split('')
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = out[i % out.length]! % (i + 1)
-    ;[arr[i], arr[j]] = [arr[j]!, arr[i]!]
-  }
-  return arr.join('')
-}
-
 const fixedResetEmail = import.meta.env.VITE_PASSWORD_RESET_EMAIL?.trim() ?? ''
 const googleOAuthWebClientId = import.meta.env.VITE_GOOGLE_OAUTH_WEB_CLIENT_ID?.trim() ?? ''
 
@@ -207,14 +183,6 @@ export function LoginScreen() {
     }
   }
 
-  function applyGeneratedPassword() {
-    const next = generateStrongPassword()
-    setPassword(next)
-    setShowPassword(true)
-    void navigator.clipboard.writeText(next).catch(() => {})
-    setError('')
-  }
-
   async function sendPasswordReset() {
     setResetFeedback(null)
     setResetNote('')
@@ -368,9 +336,6 @@ export function LoginScreen() {
                   onClick={() => void sendPasswordReset()}
                 >
                   {resetBusy ? 'Sending…' : 'Forgot password?'}
-                </button>
-                <button type="button" className="link-button" onClick={applyGeneratedPassword}>
-                  Suggest strong password
                 </button>
               </div>
 
