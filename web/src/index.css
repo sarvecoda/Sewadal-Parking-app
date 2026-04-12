@@ -158,10 +158,97 @@ body {
 }
 
 .login-sub {
-  margin: 0.2rem 0 1.75rem;
+  margin: 0.2rem 0 0.75rem;
   font-size: clamp(1.35rem, 4.5vw, 1.65rem);
   color: rgba(245, 240, 230, 0.92);
   font-weight: 600;
+}
+
+.login-card--narrow {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.login-note {
+  margin: 0 0 1.25rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: rgba(245, 240, 230, 0.88);
+  text-align: left;
+}
+
+.login-note--muted {
+  color: rgba(245, 240, 230, 0.72);
+}
+
+.login-code {
+  font-size: 0.78em;
+  padding: 0.08em 0.35em;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.login-password-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.login-password-label {
+  margin-bottom: 0.35rem;
+}
+
+.login-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 0.65rem;
+  justify-content: space-between;
+}
+
+.link-button {
+  border: none;
+  background: none;
+  padding: 0.25rem 0;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #e8d4a8;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: #fff;
+}
+
+.login-microcopy {
+  margin: 0.75rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: rgba(245, 240, 230, 0.55);
+  text-align: left;
+}
+
+.login-microcopy strong {
+  color: rgba(245, 240, 230, 0.75);
+}
+
+.login-reset-msg {
+  margin-top: 0.75rem;
+  font-size: 0.86rem;
+}
+
+.login-reset-msg--ok {
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  background: var(--surface-0);
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-sm);
 }
 
 .login-form {

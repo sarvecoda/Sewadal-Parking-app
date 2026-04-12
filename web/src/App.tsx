@@ -1,10 +1,18 @@
-import { useCallback, useMemo, useState } from 'react'
-import { LoginScreen, isSessionValid } from './components/LoginScreen'
+import { useEffect, useMemo, useState } from 'react'
+import type { User } from 'firebase/auth'
+import { onAuthStateChanged } from 'firebase/auth'
+import { LegacyLoginScreen } from './components/LegacyLoginScreen'
+import { LoginScreen } from './components/LoginScreen'
 import { MainScreen } from './components/MainScreen'
-import { getFirestoreDb, isFirebaseConfigured } from './firebase'
+import { getFirebaseAuth, getFirestoreDb, isFirebaseConfigured } from './firebase'
 
 export default function App() {
-  const [loggedIn, setLoggedIn] = useState(isSessionValid)
+  const legacyLogin = import.meta.env.VITE_LEGACY_LOGIN === 'true'
+
+  const [legacyOk, setLegacyOk] = useState(
+    () => legacyLogin && sessionStorage.getItem('sns_parking_legacy_session') === '1',
+  )
+
   const firebaseReady = useMemo(() => isFirebaseConfigured(), [])
 
   const db = useMemo(() => {
@@ -16,8 +24,15 @@ export default function App() {
     }
   }, [firebaseReady])
 
-  const handleLoggedIn = useCallback(() => setLoggedIn(true), [])
-  const handleLogout = useCallback(() => setLoggedIn(false), [])
+  const [authUser, setAuthUser] = useState<User | null | undefined>(() =>
+    legacyLogin ? null : undefined,
+  )
+
+  useEffect(() => {
+    if (!firebaseReady || legacyLogin || !db) return
+    const auth = getFirebaseAuth()
+    return onAuthStateChanged(auth, setAuthUser)
+  }, [firebaseReady, legacyLogin, db])
 
   if (!firebaseReady) {
     return (
@@ -31,8 +46,8 @@ export default function App() {
           <code>npm run dev</code>.
         </p>
         <p className="setup-muted">
-          Firestore rules must allow reads and writes from the web client (same as your Android
-          app), or authenticated access if you add sign-in later.
+          For sign-in: enable <strong>Authentication → Sign-in method → Email/Password</strong>, then
+          add users under <strong>Authentication → Users</strong>.
         </p>
       </div>
     )
@@ -42,14 +57,33 @@ export default function App() {
     return (
       <div className="setup-root">
         <h1>Firebase error</h1>
-        <p>Could not initialize Firebase. Check <code>web/.env</code> values.</p>
+        <p>
+          Could not initialize Firebase. Check <code>web/.env</code> values.
+        </p>
       </div>
     )
   }
 
-  if (!loggedIn) {
-    return <LoginScreen onLoggedIn={handleLoggedIn} />
+  if (legacyLogin) {
+    if (!legacyOk) {
+      return <LegacyLoginScreen onLoggedIn={() => setLegacyOk(true)} />
+    }
+    return <MainScreen db={db} onLegacyLogout={() => setLegacyOk(false)} />
   }
 
-  return <MainScreen db={db} onLogout={handleLogout} />
+  if (authUser === undefined) {
+    return (
+      <div className="login-shell">
+        <div className="login-card login-card--narrow">
+          <p className="login-note login-note--muted">Checking sign-in…</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!authUser) {
+    return <LoginScreen />
+  }
+
+  return <MainScreen db={db} />
 }

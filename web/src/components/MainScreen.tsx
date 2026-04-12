@@ -9,12 +9,14 @@ import {
   normalizeVehicle,
   subscribeVehicles,
 } from '../vehicleRepository'
-import { logoutSession } from './LoginScreen'
+import { clearLegacySession } from './LegacyLoginScreen'
+import { signOutUser } from '../firebase'
 import { ModalFrame } from './ModalFrame'
 
 type Props = {
   db: Firestore
-  onLogout: () => void
+  /** When using `VITE_LEGACY_LOGIN`, clear session and return to legacy login. */
+  onLegacyLogout?: () => void
 }
 
 type Pending =
@@ -40,7 +42,7 @@ function validateNewVehicle(form: {
   return null
 }
 
-export function MainScreen({ db, onLogout }: Props) {
+export function MainScreen({ db, onLegacyLogout }: Props) {
   const [today, setToday] = useState<VehicleDoc[]>([])
   const [all, setAll] = useState<VehicleDoc[]>([])
   const [toast, setToast] = useState<string | null>(null)
@@ -215,10 +217,18 @@ export function MainScreen({ db, onLogout }: Props) {
     }
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     if (busy) return
-    logoutSession()
-    onLogout()
+    if (import.meta.env.VITE_LEGACY_LOGIN === 'true') {
+      clearLegacySession()
+      onLegacyLogout?.()
+      return
+    }
+    try {
+      await signOutUser()
+    } catch {
+      /* still leave UI — auth listener will update if sign-out worked */
+    }
   }
 
   const callHref = callConfirm ? telHref(callConfirm.entry3) : null

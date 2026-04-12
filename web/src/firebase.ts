@@ -1,4 +1,5 @@
 import { getApps, initializeApp, type FirebaseApp } from 'firebase/app'
+import { getAuth, signOut, type Auth } from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
 
 function readConfig() {
@@ -22,6 +23,7 @@ export function isFirebaseConfigured(): boolean {
 
 let app: FirebaseApp | null = null
 let db: Firestore | null = null
+let auth: Auth | null = null
 
 export function getFirestoreDb(): Firestore {
   if (db) return db
@@ -35,3 +37,18 @@ export function getFirestoreDb(): Firestore {
   db = getFirestore(app)
   return db
 }
+
+/** Uses the same Firebase app as Firestore. Call after `getFirestoreDb()` or it will init the app. */
+export function getFirebaseAuth(): Auth {
+  if (auth) return auth
+  if (!getApps().length) {
+    getFirestoreDb()
+  }
+  auth = getAuth(getApps()[0]!)
+  return auth
+}
+
+export async function signOutUser(): Promise<void> {
+  await signOut(getFirebaseAuth())
+}
+
