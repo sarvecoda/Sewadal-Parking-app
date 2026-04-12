@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { User } from 'firebase/auth'
 import type { Firestore } from 'firebase/firestore'
 import type { VehicleData, VehicleDoc } from '../types'
@@ -10,11 +10,13 @@ import {
   formatFirestoreError,
   normalizeVehicle,
   subscribeVehicles,
+  updateVehicleDocsForPlate,
 } from '../vehicleRepository'
 import { clearLegacySession } from './LegacyLoginScreen'
 import { AdminAccessModal } from './AdminAccessModal'
 import { signOutUser } from '../firebase'
 import { ModalFrame } from './ModalFrame'
+import { SwipeActionRow } from './SwipeActionRow'
 
 type Props = {
   db: Firestore
@@ -29,6 +31,7 @@ type Pending =
   | 'addFromMaster'
   | 'deleteOne'
   | 'deleteAll'
+  | 'editSave'
 
 function telHref(phone: string): string | null {
   const cleaned = phone.replace(/[^\d+]/g, '')
@@ -86,11 +89,20 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
 
   const canAdmin = isAppAdmin(authUser)
   const [confirmAdd, setConfirmAdd] = useState<VehicleData | null>(null)
-  const [deleteOne, setDeleteOne] = useState<VehicleDoc | null>(null)
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
+  const [editVehicle, setEditVehicle] = useState<VehicleDoc | null>(null)
+  const editInitialPlateRef = useRef('')
   const [deleteAllOpen, setDeleteAllOpen] = useState(false)
   const [callConfirm, setCallConfirm] = useState<VehicleData | null>(null)
 
   const [newForm, setNewForm] = useState({
+    entry1: '',
+    entry2: '',
+    entry3: '',
+    entry4: '',
+  })
+
+  const [editForm, setEditForm] = useState({
     entry1: '',
     entry2: '',
     entry3: '',
@@ -103,6 +115,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     if (busy) return
     setSearchOpen(false)
     setSearchQuery('')
+    setOpenSwipeId(null)
   }, [busy])
 
   const closeAdd = useCallback(() => {
@@ -115,7 +128,8 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || busy) return
       if (confirmAdd) setConfirmAdd(null)
-      else if (deleteOne) setDeleteOne(null)
+      else if (openSwipeId) setOpenSwipeId(null)
+      else if (editVehicle) setEditVehicle(null)
       else if (deleteAllOpen) setDeleteAllOpen(false)
       else if (callConfirm) setCallConfirm(null)
       else if (addOpen) closeAdd()
@@ -126,7 +140,8 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
   }, [
     busy,
     confirmAdd,
-    deleteOne,
+    openSwipeId,
+    editVehicle,
     deleteAllOpen,
     callConfirm,
     addOpen,
@@ -198,12 +213,85 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     }
   }
 
-  async function removeTodayDoc(row: VehicleDoc) {
+  async function deleteTodayRow(row: VehicleDoc) {
     setPending('deleteOne')
     try {
       await deleteVehicleDoc(db, row.id, true)
-      setDeleteOne(null)
-      showToast('Removed')
+      setOpenSwipeId((cur) => (cur === row.id ? null : cur))
+      showToast('Removed from today')
+    } catch (e) {
+      setFireErr(formatFirestoreError(e))
+    } finally {
+      setPending(null)
+    }
+  }
+
+  async function deleteMasterRow(row: VehicleDoc) {
+    const swipeKey = `m-${row.id}`
+    setPending('deleteOne')
+    try {
+      await deleteVehicleDoc(db, row.id, false)
+      setOpenSwipeId((cur) => (cur === swipeKey ? null : cur))
+      showToast('Removed from master')
+    } catch (e) {
+      setFireErr(formatFirestoreError(e))
+    } finally {
+      setPending(null)
+    }
+  }
+
+  function beginEdit(row: VehicleDoc) {
+    editInitialPlateRef.current = row.data.entry2.trim()
+    setEditVehicle(row)
+    setEditForm({
+      entry1: row.data.entry1,
+      entry2: row.data.entry2,
+      entry3: row.data.entry3,
+      entry4: row.data.entry4,
+    })
+    setFormError(null)
+  }
+
+  function closeEdit() {
+    if (busy) return
+    setEditVehicle(null)
+    setFormError(null)
+  }
+
+  async function saveEditVehicle() {
+    if (!editVehicle) return
+    const oldPlate = editInitialPlateRef.current
+    const err = validateNewVehicle(editForm)
+    if (err) {
+      setFormError(err)
+      return
+    }
+    const newP = editForm.entry2.trim().toLowerCase()
+    if (newP !== oldPlate.toLowerCase()) {
+      const clash = [...all, ...today].some((r) => r.data.entry2.trim().toLowerCase() === newP)
+      if (clash) {
+        setFormError('That vehicle number is already in use.')
+        return
+      }
+    }
+    setFormError(null)
+    setPending('editSave')
+    try {
+      await updateVehicleDocsForPlate(
+        db,
+        oldPlate,
+        {
+          id: 0,
+          entry1: editForm.entry1,
+          entry2: editForm.entry2,
+          entry3: editForm.entry3,
+          entry4: editForm.entry4,
+        },
+        all,
+        today,
+      )
+      setEditVehicle(null)
+      showToast('Saved')
     } catch (e) {
       setFireErr(formatFirestoreError(e))
     } finally {
@@ -318,37 +406,45 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
         ) : (
           <ul className="vehicle-list">
             {today.map((row, index) => (
-              <li
-                key={row.id}
-                className={`vehicle-card ${index % 2 === 0 ? 'vehicle-card--a' : 'vehicle-card--b'}`}
-              >
-                <div className="vehicle-card__sl">{index + 1}</div>
-                <div className="vehicle-card__main">
-                  <div className="vehicle-card__row">
-                    <span className="vehicle-card__name">{row.data.entry1}</span>
-                    <span className="vehicle-card__plate">{row.data.entry2}</span>
-                  </div>
-                  <div className="vehicle-card__row">
-                    <button
-                      type="button"
-                      className="vehicle-card__phone"
-                      onClick={() => !busy && setCallConfirm(row.data)}
-                      disabled={busy}
-                    >
-                      {row.data.entry3 || '—'}
-                    </button>
-                    <span className="vehicle-card__model">{row.data.entry4}</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="vehicle-card__delete"
-                  aria-label="Delete entry"
-                  onClick={() => !busy && setDeleteOne(row)}
+              <li key={row.id} className="vehicle-list__item">
+                <SwipeActionRow
+                  isOpen={openSwipeId === row.id}
+                  onOpenChange={(open) =>
+                    setOpenSwipeId((cur) => {
+                      if (open) return row.id
+                      return cur === row.id ? null : cur
+                    })
+                  }
+                  onEdit={() => beginEdit(row)}
+                  onDelete={() => void deleteTodayRow(row)}
                   disabled={busy}
                 >
-                  ×
-                </button>
+                  <div
+                    className={`vehicle-card ${index % 2 === 0 ? 'vehicle-card--a' : 'vehicle-card--b'}`}
+                  >
+                    <div className="vehicle-card__sl">{index + 1}</div>
+                    <div className="vehicle-card__main">
+                      <div className="vehicle-card__row">
+                        <span className="vehicle-card__name">{row.data.entry1}</span>
+                        <span className="vehicle-card__plate">{row.data.entry2}</span>
+                      </div>
+                      <div className="vehicle-card__row">
+                        <button
+                          type="button"
+                          className="vehicle-card__phone"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (!busy) setCallConfirm(row.data)
+                          }}
+                          disabled={busy}
+                        >
+                          {row.data.entry3 || '—'}
+                        </button>
+                        <span className="vehicle-card__model">{row.data.entry4}</span>
+                      </div>
+                    </div>
+                  </div>
+                </SwipeActionRow>
               </li>
             ))}
           </ul>
@@ -459,26 +555,51 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
             autoComplete="off"
             disabled={busy}
           />
-          <p className="modal-hint">Tap a row to add it to today’s list.</p>
+          <p className="modal-hint">
+            Drag a row left for <strong>Edit</strong> or <strong>Delete</strong>. Short tap still
+            adds to today’s list.
+          </p>
           <ul className="master-list">
             {filteredMaster.length === 0 ? (
               <li className="master-empty">No matches.</li>
             ) : (
-              filteredMaster.map((row, index) => (
-                <li key={row.id}>
-                  <button
-                    type="button"
-                    className={`master-row ${index % 2 === 0 ? 'master-row--a' : 'master-row--b'}`}
-                    onClick={() => !busy && setConfirmAdd({ ...row.data })}
-                    disabled={busy}
-                  >
-                    <span className="master-row__name">{row.data.entry1}</span>
-                    <span className="master-row__plate">{row.data.entry2}</span>
-                    <span className="master-row__meta">{row.data.entry3}</span>
-                    <span className="master-row__meta">{row.data.entry4}</span>
-                  </button>
-                </li>
-              ))
+              filteredMaster.map((row, index) => {
+                const swipeKey = `m-${row.id}`
+                return (
+                  <li key={row.id} className="master-list__item">
+                    <SwipeActionRow
+                      isOpen={openSwipeId === swipeKey}
+                      onOpenChange={(open) =>
+                        setOpenSwipeId((cur) => {
+                          if (open) return swipeKey
+                          return cur === swipeKey ? null : cur
+                        })
+                      }
+                      onEdit={() => beginEdit(row)}
+                      onDelete={() => void deleteMasterRow(row)}
+                      onRowTap={() => !busy && setConfirmAdd({ ...row.data })}
+                      disabled={busy}
+                    >
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className={`master-row ${index % 2 === 0 ? 'master-row--a' : 'master-row--b'}`}
+                        onKeyDown={(e) => {
+                          if ((e.key === 'Enter' || e.key === ' ') && !busy) {
+                            e.preventDefault()
+                            setConfirmAdd({ ...row.data })
+                          }
+                        }}
+                      >
+                        <span className="master-row__name">{row.data.entry1}</span>
+                        <span className="master-row__plate">{row.data.entry2}</span>
+                        <span className="master-row__meta">{row.data.entry3}</span>
+                        <span className="master-row__meta">{row.data.entry4}</span>
+                      </div>
+                    </SwipeActionRow>
+                  </li>
+                )
+              })
             )}
           </ul>
           <div className="modal-footer modal-footer--single">
@@ -526,33 +647,74 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
         </ModalFrame>
       ) : null}
 
-      {deleteOne ? (
+      {editVehicle ? (
         <ModalFrame
-          title="Delete record"
-          titleId="del-title"
-          onClose={() => !busy && setDeleteOne(null)}
+          title="Edit vehicle"
+          titleId="edit-title"
+          onClose={closeEdit}
           locked={busy}
         >
-          <p className="modal-lead">Remove this vehicle from today’s list?</p>
-          <p className="confirm-summary">
-            {deleteOne.data.entry1} · {deleteOne.data.entry2}
+          {formError ? (
+            <p className="form-error" role="alert">
+              {formError}
+            </p>
+          ) : null}
+          <div className="modal-fields">
+            <label className="field-label field-label--modal">
+              Name
+              <input
+                className="field-input"
+                value={editForm.entry1}
+                onChange={(e) => {
+                  setEditForm((f) => ({ ...f, entry1: e.target.value }))
+                  setFormError(null)
+                }}
+              />
+            </label>
+            <label className="field-label field-label--modal">
+              Vehicle number
+              <input
+                className="field-input"
+                value={editForm.entry2}
+                onChange={(e) => {
+                  setEditForm((f) => ({ ...f, entry2: e.target.value }))
+                  setFormError(null)
+                }}
+              />
+            </label>
+            <label className="field-label field-label--modal">
+              Mobile
+              <input
+                className="field-input"
+                inputMode="tel"
+                value={editForm.entry3}
+                onChange={(e) => setEditForm((f) => ({ ...f, entry3: e.target.value }))}
+              />
+            </label>
+            <label className="field-label field-label--modal">
+              Model
+              <input
+                className="field-input"
+                value={editForm.entry4}
+                onChange={(e) => setEditForm((f) => ({ ...f, entry4: e.target.value }))}
+              />
+            </label>
+          </div>
+          <p className="modal-hint modal-hint--tight">
+            Saves to Firestore for both <strong>master</strong> and <strong>today</strong> wherever
+            this vehicle number appears.
           </p>
           <div className="modal-footer">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setDeleteOne(null)}
-              disabled={busy}
-            >
+            <button type="button" className="btn btn-secondary" onClick={closeEdit} disabled={busy}>
               Cancel
             </button>
             <button
               type="button"
-              className="btn btn-danger"
-              onClick={() => void removeTodayDoc(deleteOne)}
+              className="btn btn-primary"
+              onClick={() => void saveEditVehicle()}
               disabled={busy}
             >
-              {pending === 'deleteOne' ? 'Deleting…' : 'Delete'}
+              {pending === 'editSave' ? 'Saving…' : 'Save'}
             </button>
           </div>
         </ModalFrame>

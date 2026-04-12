@@ -61,25 +61,12 @@ body {
 #root {
   min-height: 100dvh;
   min-height: 100svh;
-  padding: calc(14px + var(--safe-top)) 14px calc(20px + var(--safe-bottom));
-  padding-left: max(14px, env(safe-area-inset-left, 0px));
-  padding-right: max(14px, env(safe-area-inset-right, 0px));
-  max-width: 520px;
-  margin: 0 auto;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) env(safe-area-inset-right, 0px)
+    calc(12px + env(safe-area-inset-bottom, 0px)) env(safe-area-inset-left, 0px);
   color: var(--text);
-}
-
-/* Phone: edge-to-edge like a native shell (no side letterboxing) */
-@media (max-width: 640px) {
-  #root {
-    max-width: none;
-    width: 100%;
-    margin: 0;
-    padding: calc(10px + env(safe-area-inset-top, 0px))
-      max(10px, env(safe-area-inset-right, 0px))
-      calc(12px + env(safe-area-inset-bottom, 0px))
-      max(10px, env(safe-area-inset-left, 0px));
-  }
 }
 
 .sr-only {
@@ -104,7 +91,8 @@ body {
   background: var(--surface-1);
   border-radius: var(--radius);
   padding: 1.35rem 1.2rem;
-  margin-top: 0.5rem;
+  margin: 0.5rem auto 0;
+  max-width: 520px;
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border);
 }
@@ -138,6 +126,10 @@ body {
 /* ----- Login (khaki card — inputs stay dark, not white) ----- */
 .login-shell {
   margin-top: 1.5rem;
+  padding: 0 12px;
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .login-card {
@@ -413,19 +405,12 @@ body {
 /* ----- Main shell ----- */
 .main-root {
   background: var(--surface-1);
-  border-radius: var(--radius);
-  padding: 1.1rem 1rem 1.35rem;
-  box-shadow: var(--shadow-lg);
-  border: 1px solid var(--border);
-}
-
-@media (max-width: 640px) {
-  .main-root {
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-    padding: 1rem 0.75rem 1.25rem;
-  }
+  border-radius: 0;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 0 1.25rem;
+  box-shadow: none;
 }
 
 .main-header {
@@ -434,7 +419,7 @@ body {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
-  padding-bottom: 1rem;
+  padding: 0 10px 1rem;
   border-bottom: 1px solid var(--border);
 }
 
@@ -507,7 +492,7 @@ body {
   border-radius: var(--radius-sm);
   padding: 0.7rem 0.75rem;
   font-size: 0.86rem;
-  margin-bottom: 0.85rem;
+  margin: 0 10px 0.85rem;
 }
 
 .banner-error {
@@ -542,6 +527,7 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-bottom: 1rem;
+  padding: 0 10px;
 }
 
 .btn {
@@ -589,8 +575,8 @@ body {
 }
 
 .btn-danger-outline {
-  width: 100%;
-  margin-top: 1rem;
+  width: calc(100% - 20px);
+  margin: 1rem 10px 0;
   min-height: 48px;
   border-radius: var(--radius-sm);
   font-family: inherit;
@@ -616,6 +602,7 @@ body {
 
 .list-section {
   margin-top: 0.25rem;
+  padding: 0 10px;
 }
 
 .empty-card {
@@ -654,6 +641,62 @@ body {
   gap: 8px;
 }
 
+.vehicle-list__item {
+  list-style: none;
+  margin: 0;
+}
+
+.swipe-row {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
+.swipe-row__actions {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 112px;
+  display: flex;
+  flex-direction: row;
+  z-index: 0;
+}
+
+.swipe-row__btn {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+}
+
+.swipe-row__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.swipe-row__btn--edit {
+  background: linear-gradient(180deg, #2d5a3d 0%, #1e3d28 100%);
+}
+
+.swipe-row__btn--delete {
+  background: linear-gradient(180deg, #a03832 0%, #6b201c 100%);
+}
+
+.swipe-row__front {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  touch-action: pan-y;
+}
+
 .vehicle-card {
   display: flex;
   align-items: stretch;
@@ -663,6 +706,7 @@ body {
   border-radius: var(--radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  width: 100%;
 }
 
 .vehicle-card--a {
@@ -724,28 +768,6 @@ body {
 .vehicle-card__model {
   font-weight: 600;
   opacity: 0.95;
-}
-
-.vehicle-card__delete {
-  flex: 0 0 44px;
-  width: 44px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 1.35rem;
-  line-height: 1;
-  font-weight: 400;
-  background: rgba(0, 0, 0, 0.2);
-  color: inherit;
-}
-
-.vehicle-card__delete:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.vehicle-card__delete:active:not(:disabled) {
-  background: rgba(0, 0, 0, 0.35);
 }
 
 /* ----- Modal sheet ----- */
@@ -958,6 +980,12 @@ body {
   color: var(--text-muted);
 }
 
+.modal-hint--tight {
+  margin-top: -0.25rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
 .modal-lead {
   margin: 0 0 0.5rem;
   font-size: 0.95rem;
@@ -984,6 +1012,11 @@ body {
   overflow: auto;
   flex: 1;
   min-height: 100px;
+}
+
+.master-list__item {
+  list-style: none;
+  margin: 0;
 }
 
 .master-empty {
@@ -1021,6 +1054,11 @@ body {
 
 .master-row--b {
   background: linear-gradient(135deg, var(--skyblue-light) 0%, var(--skyblue) 100%);
+}
+
+.master-row:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.55);
+  outline-offset: 2px;
 }
 
 .master-row__name,

@@ -106,6 +106,44 @@ export async function deleteVehicleDoc(
 }
 
 /**
+ * Updates every master and today document whose `entry2` matches `oldPlate` (case-insensitive),
+ * so one edit keeps both lists in sync with Firestore.
+ */
+export async function updateVehicleDocsForPlate(
+  db: Firestore,
+  oldPlate: string,
+  newData: VehicleData,
+  masterDocs: VehicleDoc[],
+  todayDocs: VehicleDoc[],
+): Promise<void> {
+  const key = oldPlate.trim().toLowerCase()
+  const v = normalizeVehicle(newData)
+  const payload = {
+    id: v.id,
+    entry1: v.entry1,
+    entry2: v.entry2,
+    entry3: v.entry3,
+    entry4: v.entry4,
+  }
+  const batch = writeBatch(db)
+  let n = 0
+  for (const row of masterDocs) {
+    if (row.data.entry2.trim().toLowerCase() === key) {
+      batch.update(doc(db, ALL_COLLECTION, row.id), payload)
+      n++
+    }
+  }
+  for (const row of todayDocs) {
+    if (row.data.entry2.trim().toLowerCase() === key) {
+      batch.update(doc(db, TODAY_COLLECTION, row.id), payload)
+      n++
+    }
+  }
+  if (n === 0) return
+  await batch.commit()
+}
+
+/**
  * Deletes all documents in today’s collection in chunks (Firestore batch limit).
  */
 export async function deleteAllToday(db: Firestore): Promise<void> {
