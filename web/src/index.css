@@ -694,7 +694,7 @@ body {
   position: relative;
   z-index: 1;
   width: 100%;
-  touch-action: pan-y;
+  touch-action: manipulation;
 }
 
 .vehicle-card {
