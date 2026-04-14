@@ -332,140 +332,134 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
 
   return (
     <>
-    <div className="main-screen-layout">
     <div className="main-root">
-      <div className="main-root__fixed">
-        <header className="main-header">
-          <div className="main-header__text">
-            <p className="main-eyebrow">SNS Parking · BLR</p>
-            <h1 className="main-title">Today’s list</h1>
-            <p className="main-sub">
-              {today.length} vehicle{today.length === 1 ? '' : 's'} · {all.length} in master · oldest
-              at top
-            </p>
-          </div>
-          <div className="main-header__actions">
-            {canAdmin ? (
-              <button
-                type="button"
-                className="btn-pill btn-pill--ghost"
-                onClick={() => setAdminOpen(true)}
-                disabled={busy}
-              >
-                Manage access
-              </button>
-            ) : null}
+      <header className="main-header">
+        <div className="main-header__text">
+          <p className="main-eyebrow">SNS Parking · BLR</p>
+          <h1 className="main-title">Today’s list</h1>
+          <p className="main-sub">
+            {today.length} vehicle{today.length === 1 ? '' : 's'} · {all.length} in master · oldest
+            at top
+          </p>
+        </div>
+        <div className="main-header__actions">
+          {canAdmin ? (
             <button
               type="button"
               className="btn-pill btn-pill--ghost"
-              onClick={handleLogout}
+              onClick={() => setAdminOpen(true)}
               disabled={busy}
             >
-              Log out
+              Manage access
             </button>
-          </div>
-        </header>
-
-        {fireErr ? (
-          <div className="banner banner-error" role="alert">
-            <span className="banner__text">{fireErr}</span>
-            <button
-              type="button"
-              className="banner__dismiss"
-              aria-label="Dismiss error"
-              onClick={() => setFireErr(null)}
-            >
-              ×
-            </button>
-          </div>
-        ) : null}
-
-        <div className="btn-row">
+          ) : null}
           <button
             type="button"
-            className="btn btn-primary"
-            onClick={() => setSearchOpen(true)}
+            className="btn-pill btn-pill--ghost"
+            onClick={handleLogout}
             disabled={busy}
           >
-            Add from list
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => setAddOpen(true)}
-            disabled={busy}
-          >
-            Add new
+            Log out
           </button>
         </div>
-      </div>
+      </header>
 
-      <div className="main-root__scroll">
-        <section className="list-section" aria-label="Today’s parking list">
-          {today.length === 0 ? (
-            <div className="empty-card">
-              <p className="empty-card__title">No vehicles yet</p>
-              <p className="empty-card__hint">
-                Use <strong>Add new</strong> for a fresh entry, or <strong>Add from list</strong> to
-                copy from the master list.
-              </p>
-            </div>
-          ) : (
-            <ul className="vehicle-list">
-              {today.map((row, index) => (
-                <li key={row.id} className="vehicle-list__item">
-                  <SwipeActionRow
-                    isOpen={openSwipeId === row.id}
-                    onOpenChange={(open) =>
-                      setOpenSwipeId((cur) => {
-                        if (open) return row.id
-                        return cur === row.id ? null : cur
-                      })
-                    }
-                    onEdit={() => beginEdit(row)}
-                    onDelete={() => setDeleteConfirm({ row, kind: 'today' })}
-                    disabled={busy}
-                  >
-                    <div
-                      className={`vehicle-card ${index % 2 === 0 ? 'vehicle-card--a' : 'vehicle-card--b'}`}
-                    >
-                      <div className="vehicle-card__sl">{index + 1}</div>
-                      <div className="vehicle-card__grid">
-                        <span className="vehicle-card__name">{row.data.entry1}</span>
-                        <span className="vehicle-card__plate">{row.data.entry2}</span>
-                        <button
-                          type="button"
-                          className="vehicle-card__phone vehicle-card__grid-tap"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (!busy) setCallConfirm(row.data)
-                          }}
-                          disabled={busy}
-                        >
-                          {row.data.entry3 || '—'}
-                        </button>
-                        <span className="vehicle-card__meta">{row.data.entry4}</span>
-                      </div>
-                    </div>
-                  </SwipeActionRow>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+      {fireErr ? (
+        <div className="banner banner-error" role="alert">
+          <span className="banner__text">{fireErr}</span>
+          <button
+            type="button"
+            className="banner__dismiss"
+            aria-label="Dismiss error"
+            onClick={() => setFireErr(null)}
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
 
+      <div className="btn-row">
         <button
           type="button"
-          className="btn btn-danger-outline"
-          onClick={() => setDeleteAllOpen(true)}
-          disabled={busy || today.length === 0}
+          className="btn btn-primary"
+          onClick={() => setSearchOpen(true)}
+          disabled={busy}
         >
-          Delete all today
+          Add from list
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => setAddOpen(true)}
+          disabled={busy}
+        >
+          Add new
         </button>
       </div>
 
+      <section className="list-section" aria-label="Today’s parking list">
+        {today.length === 0 ? (
+          <div className="empty-card">
+            <p className="empty-card__title">No vehicles yet</p>
+            <p className="empty-card__hint">
+              Use <strong>Add new</strong> for a fresh entry, or <strong>Add from list</strong> to
+              copy from the master list.
+            </p>
+          </div>
+        ) : (
+          <ul className="vehicle-list">
+            {today.map((row, index) => (
+              <li key={row.id} className="vehicle-list__item">
+                <SwipeActionRow
+                  isOpen={openSwipeId === row.id}
+                  onOpenChange={(open) =>
+                    setOpenSwipeId((cur) => {
+                      if (open) return row.id
+                      return cur === row.id ? null : cur
+                    })
+                  }
+                  onEdit={() => beginEdit(row)}
+                  onDelete={() => setDeleteConfirm({ row, kind: 'today' })}
+                  disabled={busy}
+                >
+                  <div
+                    className={`vehicle-card ${index % 2 === 0 ? 'vehicle-card--a' : 'vehicle-card--b'}`}
+                  >
+                    <div className="vehicle-card__sl">{index + 1}</div>
+                    <div className="vehicle-card__grid">
+                      <span className="vehicle-card__name">{row.data.entry1}</span>
+                      <span className="vehicle-card__plate">{row.data.entry2}</span>
+                      <button
+                        type="button"
+                        className="vehicle-card__phone vehicle-card__grid-tap"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (!busy) setCallConfirm(row.data)
+                        }}
+                        disabled={busy}
+                      >
+                        {row.data.entry3 || '—'}
+                      </button>
+                      <span className="vehicle-card__meta">{row.data.entry4}</span>
+                    </div>
+                  </div>
+                </SwipeActionRow>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <button
+        type="button"
+        className="btn btn-danger-outline"
+        onClick={() => setDeleteAllOpen(true)}
+        disabled={busy || today.length === 0}
+      >
+        Delete all today
+      </button>
+
       {toast ? <div className="toast">{toast}</div> : null}
-    </div>
 
       {addOpen ? (
         <ModalFrame
@@ -787,7 +781,6 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
         </ModalFrame>
       ) : null}
     </div>
-
     {deleteConfirm ? (
       <div
         className="delete-confirm-toast"
