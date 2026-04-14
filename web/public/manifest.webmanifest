@@ -9,7 +9,7 @@
   "icons": [
     {
       "src": "/parking-app-icon.jpg",
-      "sizes": "512x512",
+      "sizes": "1000x996",
       "type": "image/jpeg",
       "purpose": "any"
     }
