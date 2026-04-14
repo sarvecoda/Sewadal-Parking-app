@@ -25,6 +25,14 @@ export function LegacyLoginScreen({ onLoggedIn }: Props) {
   return (
     <div className="login-shell">
       <div className="login-card login-card--narrow">
+        <img
+          className="login-app-icon"
+          src="/parking-app-icon.jpg"
+          width={88}
+          height={88}
+          alt=""
+          decoding="async"
+        />
         <h1 className="login-brand">SNM Bangalore</h1>
         <p className="login-sub">Parking</p>
         <p className="login-note">

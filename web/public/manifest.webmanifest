@@ -1,0 +1,17 @@
+{
+  "name": "SNS Parking app BLR",
+  "short_name": "SNS Parking",
+  "description": "SNS Parking — today’s list and master vehicles",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#12100e",
+  "theme_color": "#aa8b56",
+  "icons": [
+    {
+      "src": "/parking-app-icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}

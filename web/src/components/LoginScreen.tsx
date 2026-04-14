@@ -234,6 +234,14 @@ export function LoginScreen() {
   return (
     <div className="login-shell">
       <div className="login-card">
+        <img
+          className="login-app-icon"
+          src="/parking-app-icon.jpg"
+          width={88}
+          height={88}
+          alt=""
+          decoding="async"
+        />
         <h1 className="login-brand">SNM Bangalore</h1>
         <p className="login-sub">Parking</p>
 
