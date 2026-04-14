@@ -400,67 +400,67 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
       </div>
 
       <div className="main-root__scroll">
-      <section className="list-section" aria-label="Today’s parking list">
-        {today.length === 0 ? (
-          <div className="empty-card">
-            <p className="empty-card__title">No vehicles yet</p>
-            <p className="empty-card__hint">
-              Use <strong>Add new</strong> for a fresh entry, or <strong>Add from list</strong> to
-              copy from the master list.
-            </p>
-          </div>
-        ) : (
-          <ul className="vehicle-list">
-            {today.map((row, index) => (
-              <li key={row.id} className="vehicle-list__item">
-                <SwipeActionRow
-                  isOpen={openSwipeId === row.id}
-                  onOpenChange={(open) =>
-                    setOpenSwipeId((cur) => {
-                      if (open) return row.id
-                      return cur === row.id ? null : cur
-                    })
-                  }
-                  onEdit={() => beginEdit(row)}
-                  onDelete={() => setDeleteConfirm({ row, kind: 'today' })}
-                  disabled={busy}
-                >
-                  <div
-                    className={`vehicle-card ${index % 2 === 0 ? 'vehicle-card--a' : 'vehicle-card--b'}`}
+        <section className="list-section" aria-label="Today’s parking list">
+          {today.length === 0 ? (
+            <div className="empty-card">
+              <p className="empty-card__title">No vehicles yet</p>
+              <p className="empty-card__hint">
+                Use <strong>Add new</strong> for a fresh entry, or <strong>Add from list</strong> to
+                copy from the master list.
+              </p>
+            </div>
+          ) : (
+            <ul className="vehicle-list">
+              {today.map((row, index) => (
+                <li key={row.id} className="vehicle-list__item">
+                  <SwipeActionRow
+                    isOpen={openSwipeId === row.id}
+                    onOpenChange={(open) =>
+                      setOpenSwipeId((cur) => {
+                        if (open) return row.id
+                        return cur === row.id ? null : cur
+                      })
+                    }
+                    onEdit={() => beginEdit(row)}
+                    onDelete={() => setDeleteConfirm({ row, kind: 'today' })}
+                    disabled={busy}
                   >
-                    <div className="vehicle-card__sl">{index + 1}</div>
-                    <div className="vehicle-card__grid">
-                      <span className="vehicle-card__name">{row.data.entry1}</span>
-                      <span className="vehicle-card__plate">{row.data.entry2}</span>
-                      <button
-                        type="button"
-                        className="vehicle-card__phone vehicle-card__grid-tap"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (!busy) setCallConfirm(row.data)
-                        }}
-                        disabled={busy}
-                      >
-                        {row.data.entry3 || '—'}
-                      </button>
-                      <span className="vehicle-card__meta">{row.data.entry4}</span>
+                    <div
+                      className={`vehicle-card ${index % 2 === 0 ? 'vehicle-card--a' : 'vehicle-card--b'}`}
+                    >
+                      <div className="vehicle-card__sl">{index + 1}</div>
+                      <div className="vehicle-card__grid">
+                        <span className="vehicle-card__name">{row.data.entry1}</span>
+                        <span className="vehicle-card__plate">{row.data.entry2}</span>
+                        <button
+                          type="button"
+                          className="vehicle-card__phone vehicle-card__grid-tap"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (!busy) setCallConfirm(row.data)
+                          }}
+                          disabled={busy}
+                        >
+                          {row.data.entry3 || '—'}
+                        </button>
+                        <span className="vehicle-card__meta">{row.data.entry4}</span>
+                      </div>
                     </div>
-                  </div>
-                </SwipeActionRow>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                  </SwipeActionRow>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-      <button
-        type="button"
-        className="btn btn-danger main-delete-all-today"
-        onClick={() => setDeleteAllOpen(true)}
-        disabled={busy || today.length === 0}
-      >
-        Delete all today
-      </button>
+        <button
+          type="button"
+          className="btn btn-danger main-delete-all-today"
+          onClick={() => setDeleteAllOpen(true)}
+          disabled={busy || today.length === 0}
+        >
+          Delete all today
+        </button>
       </div>
 
       {toast ? <div className="toast">{toast}</div> : null}
