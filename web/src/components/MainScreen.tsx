@@ -333,70 +333,73 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
   return (
     <>
     <div className="main-root">
-      <header className="main-header">
-        <div className="main-header__text">
-          <p className="main-eyebrow">SNS Parking · BLR</p>
-          <h1 className="main-title">Today’s list</h1>
-          <p className="main-sub">
-            {today.length} vehicle{today.length === 1 ? '' : 's'} · {all.length} in master · oldest
-            at top
-          </p>
-        </div>
-        <div className="main-header__actions">
-          {canAdmin ? (
+      <div className="main-root__fixed">
+        <header className="main-header">
+          <div className="main-header__text">
+            <p className="main-eyebrow">SNS Parking · BLR</p>
+            <h1 className="main-title">Today’s list</h1>
+            <p className="main-sub">
+              {today.length} vehicle{today.length === 1 ? '' : 's'} · {all.length} in master · oldest
+              at top
+            </p>
+          </div>
+          <div className="main-header__actions">
+            {canAdmin ? (
+              <button
+                type="button"
+                className="btn-pill btn-pill--ghost"
+                onClick={() => setAdminOpen(true)}
+                disabled={busy}
+              >
+                Manage access
+              </button>
+            ) : null}
             <button
               type="button"
               className="btn-pill btn-pill--ghost"
-              onClick={() => setAdminOpen(true)}
+              onClick={handleLogout}
               disabled={busy}
             >
-              Manage access
+              Log out
             </button>
-          ) : null}
+          </div>
+        </header>
+
+        {fireErr ? (
+          <div className="banner banner-error" role="alert">
+            <span className="banner__text">{fireErr}</span>
+            <button
+              type="button"
+              className="banner__dismiss"
+              aria-label="Dismiss error"
+              onClick={() => setFireErr(null)}
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
+
+        <div className="btn-row">
           <button
             type="button"
-            className="btn-pill btn-pill--ghost"
-            onClick={handleLogout}
+            className="btn btn-primary"
+            onClick={() => setSearchOpen(true)}
             disabled={busy}
           >
-            Log out
+            Add from list
           </button>
-        </div>
-      </header>
-
-      {fireErr ? (
-        <div className="banner banner-error" role="alert">
-          <span className="banner__text">{fireErr}</span>
           <button
             type="button"
-            className="banner__dismiss"
-            aria-label="Dismiss error"
-            onClick={() => setFireErr(null)}
+            className="btn btn-primary"
+            onClick={() => setAddOpen(true)}
+            disabled={busy}
           >
-            ×
+            Add new
           </button>
         </div>
-      ) : null}
-
-      <div className="btn-row">
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => setSearchOpen(true)}
-          disabled={busy}
-        >
-          Add from list
-        </button>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => setAddOpen(true)}
-          disabled={busy}
-        >
-          Add new
-        </button>
       </div>
 
+      <div className="main-root__scroll">
       <section className="list-section" aria-label="Today’s parking list">
         {today.length === 0 ? (
           <div className="empty-card">
@@ -452,12 +455,13 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
 
       <button
         type="button"
-        className="btn btn-danger-outline"
+        className="btn btn-danger main-delete-all-today"
         onClick={() => setDeleteAllOpen(true)}
         disabled={busy || today.length === 0}
       >
         Delete all today
       </button>
+      </div>
 
       {toast ? <div className="toast">{toast}</div> : null}
 
