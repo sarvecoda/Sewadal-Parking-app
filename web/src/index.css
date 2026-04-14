@@ -72,6 +72,22 @@ body {
   color: var(--text);
 }
 
+/* Today’s list: fill viewport so the list region can scroll under a fixed header. */
+#root:has(.main-screen-layout) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  min-height: 100svh;
+}
+
+.main-screen-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -418,17 +434,31 @@ body {
   border-radius: var(--radius-sm);
 }
 
-/* ----- Main shell (same photo backdrop as Android; panel reads on top) ----- */
+/* ----- Main shell (photo shows through; cards and buttons unchanged) ----- */
 .main-root {
-  background: rgba(22, 20, 18, 0.88);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  background: transparent;
   border-radius: 0;
   border: none;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  padding: 1rem 0 1.25rem;
+  padding: 1rem 0 0;
   box-shadow: none;
+}
+
+.main-root__fixed {
+  flex-shrink: 0;
+}
+
+.main-root__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 1.25rem;
 }
 
 .main-header {
@@ -439,6 +469,12 @@ body {
   margin-bottom: 1rem;
   padding: 0 10px 1rem;
   border-bottom: 1px solid var(--border);
+}
+
+.main-root .main-title,
+.main-root .main-sub,
+.main-root .main-eyebrow {
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.75);
 }
 
 .main-header__text {
@@ -494,6 +530,13 @@ body {
   background: transparent;
 }
 
+/* Ghost pills on the photo: slight glass so labels stay readable. */
+.main-root .btn-pill--ghost {
+  background: rgba(18, 16, 14, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 .btn-pill:active:not(:disabled) {
   transform: scale(0.98);
 }
@@ -544,8 +587,12 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   padding: 0 10px;
+}
+
+.main-root__fixed .btn-row {
+  padding-bottom: 0.35rem;
 }
 
 .btn {
