@@ -1088,11 +1088,15 @@ body {
   overflow: auto;
   flex: 1;
   min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .master-list__item {
   list-style: none;
   margin: 0;
+  flex-shrink: 0;
 }
 
 .master-empty {
@@ -1110,7 +1114,6 @@ body {
   text-align: left;
   padding: 0.7rem 0.65rem;
   border-radius: var(--radius-sm);
-  margin-bottom: 8px;
   font-size: 0.86rem;
   font-family: inherit;
   color: var(--white);
