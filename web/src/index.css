@@ -69,12 +69,25 @@ body {
   color: var(--text);
 }
 
-/* Main screen fills viewport so the list region can scroll under fixed header + actions */
+/*
+ * Main screen: lock document scroll so only .main-root__scroll moves.
+ * Without a fixed height on the chain, the flex child grows and the whole page scrolls.
+ */
+html:has(.main-root),
+body:has(.main-root) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior-y: none;
+}
+
 #root:has(.main-root) {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
-  min-height: 100svh;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .sr-only {
@@ -428,6 +441,7 @@ body {
   flex-direction: column;
   min-height: 0;
   width: 100%;
+  overflow: hidden;
   background: var(--surface-1);
   border-radius: 0;
   border: none;
