@@ -6,6 +6,7 @@ import { isAppAdmin } from './adminConfig'
 import { LegacyLoginScreen } from './components/LegacyLoginScreen'
 import { LoginScreen } from './components/LoginScreen'
 import { MainScreen } from './components/MainScreen'
+import { LoadingSpinner } from './components/LoadingSpinner'
 import { PasswordResetFromEmail } from './components/PasswordResetFromEmail'
 import { getFirebaseAuth, getFirestoreDb, isFirebaseConfigured, signOutUser } from './firebase'
 
@@ -118,7 +119,7 @@ export default function App() {
     return (
       <div className="login-shell">
         <div className="login-card login-card--narrow">
-          <p className="login-note login-note--muted">Checking sign-in…</p>
+          <LoadingSpinner label="Checking sign-in…" padded />
         </div>
       </div>
     )
@@ -132,7 +133,7 @@ export default function App() {
     return (
       <div className="login-shell">
         <div className="login-card login-card--narrow">
-          <p className="login-note login-note--muted">Checking access…</p>
+          <LoadingSpinner label="Checking access…" padded />
         </div>
       </div>
     )

@@ -15,6 +15,7 @@ import {
 import { clearLegacySession } from './LegacyLoginScreen'
 import { AdminAccessModal } from './AdminAccessModal'
 import { signOutUser } from '../firebase'
+import { LoadingSpinner } from './LoadingSpinner'
 import { ModalFrame } from './ModalFrame'
 import { SwipeActionRow } from './SwipeActionRow'
 
@@ -52,6 +53,10 @@ function validateNewVehicle(form: {
 export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
   const [today, setToday] = useState<VehicleDoc[]>([])
   const [all, setAll] = useState<VehicleDoc[]>([])
+  /** First Firestore snapshot received (or error) per list — avoids flashing “empty” while loading. */
+  const [todayHydrated, setTodayHydrated] = useState(false)
+  const [masterHydrated, setMasterHydrated] = useState(false)
+  const listsLoading = !todayHydrated || !masterHydrated
   const [toast, setToast] = useState<string | null>(null)
   const [fireErr, setFireErr] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending>(null)
@@ -65,17 +70,31 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
   }, [])
 
   useEffect(() => {
+    setMasterHydrated(false)
+    setTodayHydrated(false)
     const u1 = subscribeVehicles(
       db,
       false,
-      setAll,
-      (e) => setFireErr(formatFirestoreError(e)),
+      (rows) => {
+        setAll(rows)
+        setMasterHydrated(true)
+      },
+      (e) => {
+        setFireErr(formatFirestoreError(e))
+        setMasterHydrated(true)
+      },
     )
     const u2 = subscribeVehicles(
       db,
       true,
-      setToday,
-      (e) => setFireErr(formatFirestoreError(e)),
+      (rows) => {
+        setToday(rows)
+        setTodayHydrated(true)
+      },
+      (e) => {
+        setFireErr(formatFirestoreError(e))
+        setTodayHydrated(true)
+      },
     )
     return () => {
       u1()
@@ -384,7 +403,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
             type="button"
             className="btn btn-primary"
             onClick={() => setSearchOpen(true)}
-            disabled={busy}
+            disabled={busy || listsLoading}
           >
             Add from list
           </button>
@@ -392,7 +411,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
             type="button"
             className="btn btn-primary"
             onClick={() => setAddOpen(true)}
-            disabled={busy}
+            disabled={busy || listsLoading}
           >
             Add new
           </button>
@@ -401,7 +420,9 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
 
       <div className="main-root__scroll">
         <section className="list-section" aria-label="Today’s parking list">
-          {today.length === 0 ? (
+          {listsLoading ? (
+            <LoadingSpinner label="Loading today’s list…" padded />
+          ) : today.length === 0 ? (
             <div className="empty-card">
               <p className="empty-card__title">No vehicles yet</p>
               <p className="empty-card__hint">
@@ -532,7 +553,14 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
               onClick={() => void submitNewVehicle()}
               disabled={busy}
             >
-              {pending === 'addNew' ? 'Saving…' : 'Save'}
+              {pending === 'addNew' ? (
+                <span className="btn-loading-row">
+                  <LoadingSpinner size="sm" inline quiet />
+                  Saving…
+                </span>
+              ) : (
+                'Save'
+              )}
             </button>
           </div>
         </ModalFrame>
@@ -556,12 +584,15 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             autoComplete="off"
-            disabled={busy}
+            disabled={busy || listsLoading}
           />
           <p className="modal-hint">
             Drag a row left for <strong>Edit</strong> or <strong>Delete</strong>. Short tap still
             adds to today’s list.
           </p>
+          {listsLoading ? (
+            <LoadingSpinner label="Loading master list…" padded />
+          ) : (
           <ul className="master-list">
             {filteredMaster.length === 0 ? (
               <li className="master-empty">No matches.</li>
@@ -605,6 +636,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
               })
             )}
           </ul>
+          )}
           <div className="modal-footer modal-footer--single">
             <button
               type="button"
@@ -644,7 +676,14 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
               onClick={() => void confirmAddToToday()}
               disabled={busy}
             >
-              {pending === 'addFromMaster' ? 'Adding…' : 'Add'}
+              {pending === 'addFromMaster' ? (
+                <span className="btn-loading-row">
+                  <LoadingSpinner size="sm" inline quiet />
+                  Adding…
+                </span>
+              ) : (
+                'Add'
+              )}
             </button>
           </div>
         </ModalFrame>
@@ -717,7 +756,14 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
               onClick={() => void saveEditVehicle()}
               disabled={busy}
             >
-              {pending === 'editSave' ? 'Saving…' : 'Save'}
+              {pending === 'editSave' ? (
+                <span className="btn-loading-row">
+                  <LoadingSpinner size="sm" inline quiet />
+                  Saving…
+                </span>
+              ) : (
+                'Save'
+              )}
             </button>
           </div>
         </ModalFrame>
@@ -748,7 +794,14 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
               onClick={() => void wipeToday()}
               disabled={busy}
             >
-              {pending === 'deleteAll' ? 'Deleting…' : 'Delete all'}
+              {pending === 'deleteAll' ? (
+                <span className="btn-loading-row">
+                  <LoadingSpinner size="sm" inline quiet />
+                  Deleting…
+                </span>
+              ) : (
+                'Delete all'
+              )}
             </button>
           </div>
         </ModalFrame>
@@ -831,7 +884,14 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
             onClick={() => void executeConfirmedDelete()}
             disabled={busy}
           >
-            {pending === 'deleteOne' ? 'Deleting…' : 'Delete'}
+            {pending === 'deleteOne' ? (
+              <span className="btn-loading-row">
+                <LoadingSpinner size="sm" inline quiet />
+                Deleting…
+              </span>
+            ) : (
+              'Delete'
+            )}
           </button>
         </div>
       </div>

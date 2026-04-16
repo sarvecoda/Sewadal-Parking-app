@@ -15,6 +15,7 @@ import { submitAccessRequestFirestore } from '../accessControlRepository'
 import { getFirebaseAuth, getFirestoreDb } from '../firebase'
 import { pickGoogleAccountEmail } from '../googleAccountPicker'
 import { formatFirestoreError } from '../vehicleRepository'
+import { LoadingSpinner } from './LoadingSpinner'
 
 const fixedResetEmail = import.meta.env.VITE_PASSWORD_RESET_EMAIL?.trim() ?? ''
 const googleOAuthWebClientId = import.meta.env.VITE_GOOGLE_OAUTH_WEB_CLIENT_ID?.trim() ?? ''
@@ -302,7 +303,14 @@ export function LoginScreen() {
                     disabled={busy || googlePickBusy}
                     onClick={() => void fillEmailFromGoogle('signIn')}
                   >
-                    {googlePickBusy ? 'Opening Google…' : 'Choose Google account for email'}
+                    {googlePickBusy ? (
+                    <span className="btn-loading-row">
+                      <LoadingSpinner size="sm" inline quiet />
+                      Opening Google…
+                    </span>
+                  ) : (
+                    'Choose Google account for email'
+                  )}
                   </button>
                   <span className="login-microcopy__hint">
                     {' '}
@@ -343,7 +351,14 @@ export function LoginScreen() {
                   disabled={resetBusy}
                   onClick={() => void sendPasswordReset()}
                 >
-                  {resetBusy ? 'Sending…' : 'Forgot password?'}
+                  {resetBusy ? (
+                    <span className="btn-loading-row">
+                      <LoadingSpinner size="sm" inline quiet />
+                      Sending…
+                    </span>
+                  ) : (
+                    'Forgot password?'
+                  )}
                 </button>
               </div>
 
@@ -365,7 +380,14 @@ export function LoginScreen() {
               ) : null}
 
               <button type="submit" className="btn btn-login" disabled={busy}>
-                {busy ? 'Signing in…' : 'Sign in'}
+                {busy ? (
+                  <span className="btn-loading-row">
+                    <LoadingSpinner size="sm" inline quiet />
+                    Signing in…
+                  </span>
+                ) : (
+                  'Sign in'
+                )}
               </button>
             </form>
           </>
@@ -406,7 +428,14 @@ export function LoginScreen() {
                     disabled={busy || googlePickBusy}
                     onClick={() => void fillEmailFromGoogle('requestAccess')}
                   >
-                    {googlePickBusy ? 'Opening Google…' : 'Choose Google account for email'}
+                    {googlePickBusy ? (
+                    <span className="btn-loading-row">
+                      <LoadingSpinner size="sm" inline quiet />
+                      Opening Google…
+                    </span>
+                  ) : (
+                    'Choose Google account for email'
+                  )}
                   </button>
                   <span className="login-microcopy__hint">
                     {' '}
@@ -487,7 +516,14 @@ export function LoginScreen() {
               ) : null}
 
               <button type="submit" className="btn btn-login" disabled={busy}>
-                {busy ? 'Sending request…' : 'Send request'}
+                {busy ? (
+                  <span className="btn-loading-row">
+                    <LoadingSpinner size="sm" inline quiet />
+                    Sending request…
+                  </span>
+                ) : (
+                  'Send request'
+                )}
               </button>
             </form>
           </>

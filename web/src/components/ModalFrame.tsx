@@ -5,6 +5,7 @@ import {
   type ReactNode,
 } from 'react'
 import { subscribeBodyScrollLock } from '../bodyScrollLock'
+import { LoadingSpinner } from './LoadingSpinner'
 
 type Props = {
   title: string
@@ -75,6 +76,11 @@ export function ModalFrame({
           </button>
         </header>
         <div className="modal-sheet__body">{children}</div>
+        {locked ? (
+          <div className="modal-sheet__busy-overlay">
+            <LoadingSpinner size="lg" label="Working…" />
+          </div>
+        ) : null}
       </div>
     </div>
   )

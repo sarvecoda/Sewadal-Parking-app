@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth'
 import { formatAuthError } from '../authErrors'
 import { getFirebaseAuth } from '../firebase'
+import { LoadingSpinner } from './LoadingSpinner'
 
 type Phase = 'checking' | 'form' | 'invalid'
 
@@ -78,7 +79,7 @@ export function PasswordResetFromEmail({
     return (
       <div className="login-shell">
         <div className="login-card">
-          <p className="login-note login-note--muted">Checking reset link…</p>
+          <LoadingSpinner label="Checking reset link…" padded />
         </div>
       </div>
     )
@@ -146,7 +147,14 @@ export function PasswordResetFromEmail({
             </p>
           ) : null}
           <button type="submit" className="btn btn-login" disabled={busy}>
-            {busy ? 'Saving…' : 'Save password'}
+            {busy ? (
+              <span className="btn-loading-row">
+                <LoadingSpinner size="sm" inline quiet />
+                Saving…
+              </span>
+            ) : (
+              'Save password'
+            )}
           </button>
           <button type="button" className="link-button login-reset-cancel" onClick={() => clearActionFromUrl()}>
             Cancel
