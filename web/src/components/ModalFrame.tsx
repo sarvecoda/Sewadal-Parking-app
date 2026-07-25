@@ -78,7 +78,7 @@ export function ModalFrame({
         <div className="modal-sheet__body">{children}</div>
         {locked ? (
           <div className="modal-sheet__busy-overlay">
-            <LoadingSpinner size="lg" label="Working…" />
+            <LoadingSpinner size="lg" label="Please wait…" />
           </div>
         ) : null}
       </div>

@@ -6,7 +6,7 @@ export function formatAuthError(err: unknown): string {
       case 'auth/invalid-email':
         return 'Enter a valid email address.'
       case 'auth/user-disabled':
-        return 'This account has been disabled. Contact an administrator.'
+        return 'This account is disabled. Contact an admin.'
       case 'auth/user-not-found':
         return 'No account found for this email.'
       case 'auth/wrong-password':
@@ -17,16 +17,16 @@ export function formatAuthError(err: unknown): string {
       case 'auth/email-already-in-use':
         return 'An account already exists with this email.'
       case 'auth/weak-password':
-        return 'Password is too weak. Use at least 8 characters and mix letters, numbers, and symbols.'
+        return 'Use a stronger password (at least 8 characters).'
       case 'auth/too-many-requests':
-        return 'Too many attempts. Please wait a few minutes and try again.'
+        return 'Too many attempts. Wait a few minutes and try again.'
       case 'auth/network-request-failed':
-        return 'Network error. Check your connection and try again.'
+        return 'Network problem. Check your connection and try again.'
       case 'auth/operation-not-allowed':
-        return 'Email/password sign-in is turned off for this project. An administrator needs to enable “Email/Password” under Firebase Authentication → Sign-in method.'
+        return 'Password sign-in is not enabled yet. Ask an admin to turn it on.'
       case 'auth/expired-action-code':
       case 'auth/invalid-action-code':
-        return 'This reset link was already used or has expired. Inbox previews sometimes open the link first—request a new reset, then open the link once from your mail app. Ask an admin to point the password-reset email “action URL” at this app’s address if this keeps happening.'
+        return 'This reset link is expired or already used. Request a new one and open it once from your mail app.'
       default:
         break
     }
@@ -38,7 +38,7 @@ export function formatAuthError(err: unknown): string {
       m.includes('already been used') ||
       m.includes('invalid action code')
     ) {
-      return 'This reset link was already used or has expired. Request a new reset and open the link once without mail previews.'
+      return 'This reset link is expired or already used. Request a new one from sign-in.'
     }
     return err.message
   }

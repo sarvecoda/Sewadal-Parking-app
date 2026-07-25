@@ -70,14 +70,14 @@ export function formatFirestoreError(err: unknown): string {
     const code = (err as { code?: string }).code
     switch (code) {
       case 'permission-denied':
-        return 'Permission denied. Check Firestore rules for web access.'
+        return 'You don’t have access to do that. Try signing in again.'
       case 'unavailable':
       case 'deadline-exceeded':
-        return 'Network issue. Check your connection and try again.'
+        return 'Network problem. Check your connection and try again.'
       case 'failed-precondition':
-        return 'Request could not be completed. Try again in a moment.'
+        return 'Couldn’t finish that. Please try again.'
       case 'resource-exhausted':
-        return 'Too many requests. Please wait and try again.'
+        return 'Too many requests. Wait a moment and try again.'
       default:
         break
     }

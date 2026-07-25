@@ -1,7 +1,7 @@
 {
-  "name": "SNS Parking app BLR",
-  "short_name": "SNS Parking",
-  "description": "SNS Parking — today’s list and master vehicles",
+  "name": "SNM Bangalore Parking",
+  "short_name": "SNM Parking",
+  "description": "Today’s parking list and master vehicle list",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#12100e",

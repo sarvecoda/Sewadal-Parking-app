@@ -85,7 +85,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
   }
 
   async function reject(id: string) {
-    if (!window.confirm('Reject this access request?')) return
+    if (!window.confirm('Reject this request?')) return
     setError(null)
     setBusy(true)
     try {
@@ -102,7 +102,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
     if (uid === authUser.uid) return
     if (
       !window.confirm(
-        'Remove this person from staff? Their parking access ends and their access request goes back to Pending so you can approve them again. Their Firebase login is unchanged until you delete the user under Authentication → Users in the Firebase Console.',
+        'Remove this person from parking staff? They will need approval again to get back in. Their login account stays until you delete it in Firebase Authentication.',
       )
     )
       return
@@ -126,7 +126,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
 
   return (
     <ModalFrame
-      title="Manage access"
+      title="Staff access"
       titleId="admin-access-title"
       onClose={onClose}
       variant="tall"
@@ -140,7 +140,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
           onClick={() => setTab('requests')}
           disabled={busy}
         >
-          Pending requests
+          Requests
         </button>
         <button
           type="button"
@@ -148,7 +148,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
           onClick={() => setTab('users')}
           disabled={busy}
         >
-          Staff (approved)
+          Staff
         </button>
       </div>
 
@@ -163,16 +163,9 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
           <p>
             <strong>{lastApproval.email}</strong> is approved.
             {lastApproval.emailedReset ? (
-              <>
-                {' '}
-                Firebase should email them a password reset link—ask them to check inbox and spam,
-                then sign in on this app.
-              </>
+              <> Ask them to check email (and spam) for a password reset link, then sign in.</>
             ) : (
-              <>
-                {' '}
-                They can sign in with the password they chose when sending the access request.
-              </>
+              <> They can sign in with the password they chose when requesting access.</>
             )}
           </p>
         </div>
@@ -181,7 +174,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
       {tab === 'requests' ? (
         <div className="admin-access-list">
           {requests.length === 0 ? (
-            <p className="login-note login-note--muted">No pending requests.</p>
+            <p className="login-note login-note--muted">No open requests.</p>
           ) : (
             <ul className="admin-access-req-list">
               {requests.map((r) => (
@@ -191,7 +184,9 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
                     {r.note ? (
                       <p className="admin-access-req__note">{r.note}</p>
                     ) : (
-                      <p className="admin-access-req__note admin-access-req__note--empty">No note</p>
+                      <p className="admin-access-req__note admin-access-req__note--empty">
+                        No note added
+                      </p>
                     )}
                   </div>
                   <div className="admin-access-req__actions">
@@ -220,9 +215,8 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
       ) : (
         <div className="admin-access-list">
           <p className="login-note login-note--muted">
-            People approved through this app. <strong>Remove</strong> sends them back to{' '}
-            <strong>Pending requests</strong> (and they see “pending” on sign-in) but does not
-            delete their Firebase login. To remove them completely, delete their user under{' '}
+            <strong>Remove</strong> takes away parking access (they go back to waiting for
+            approval). It does not delete their login. To remove the account fully, delete them in{' '}
             {authUsersConsoleHref ? (
               <a
                 href={authUsersConsoleHref}
@@ -230,13 +224,12 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
                 rel="noopener noreferrer"
                 className="link-button"
               >
-                Firebase → Authentication → Users
+                Firebase Authentication
               </a>
             ) : (
               <span>Firebase Console → Authentication → Users</span>
             )}
-            {' '}
-            (same browser / Google account you use for the console).
+            .
           </p>
           <ul className="admin-access-user-list">
             {userRowsForList.map((u) => (

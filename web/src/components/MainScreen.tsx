@@ -204,7 +204,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
       entry4: newForm.entry4,
     })
     if (today.some((t) => plateKey(t.data.entry2) === plateKey(v.entry2))) {
-      showToast('This vehicle number is already on today’s list')
+      showToast('This number is already on today’s list')
       return
     }
     setFormError(null)
@@ -213,7 +213,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
       await addVehicleToBoth(db, v)
       setAddOpen(false)
       setNewForm({ entry1: '', entry2: '', entry3: '', entry4: '' })
-      showToast('Vehicle added')
+      showToast('Added')
     } catch (e) {
       setFireErr(formatFirestoreError(e))
     } finally {
@@ -225,7 +225,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     if (!confirmAdd) return
     const normalized = normalizeVehicle(confirmAdd)
     if (today.some((t) => plateKey(t.data.entry2) === plateKey(normalized.entry2))) {
-      showToast('This vehicle is already in the list')
+      showToast('Already on today’s list')
       setConfirmAdd(null)
       return
     }
@@ -235,7 +235,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
       setConfirmAdd(null)
       setSearchOpen(false)
       setSearchQuery('')
-      showToast('Added to today’s list')
+      showToast('Added for today')
     } catch (e) {
       setFireErr(formatFirestoreError(e))
     } finally {
@@ -256,7 +256,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
         const swipeKey = `m-${row.id}`
         await deleteVehicleDoc(db, row.id, false)
         setOpenSwipeId((cur) => (cur === swipeKey ? null : cur))
-        showToast('Removed from master')
+        showToast('Removed from master list')
       }
       setDeleteConfirm(null)
     } catch (e) {
@@ -296,7 +296,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     if (newP !== plateKey(oldPlate)) {
       const clash = [...all, ...today].some((r) => plateKey(r.data.entry2) === newP)
       if (clash) {
-        setFormError('That vehicle number is already in use.')
+        setFormError('That vehicle number is already saved.')
         return
       }
     }
@@ -317,7 +317,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
         today,
       )
       setEditVehicle(null)
-      showToast('Saved')
+      showToast('Updated')
     } catch (e) {
       setFireErr(formatFirestoreError(e))
     } finally {
@@ -330,7 +330,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     try {
       await deleteAllToday(db)
       setDeleteAllOpen(false)
-      showToast('Today’s list cleared')
+      showToast('Today cleared')
     } catch (e) {
       setFireErr(formatFirestoreError(e))
     } finally {
@@ -360,11 +360,15 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
       <div className="main-root__fixed">
         <header className="main-header">
           <div className="main-header__text">
-            <p className="main-eyebrow">SNS Parking · BLR</p>
-            <h1 className="main-title">Today’s list</h1>
+            <p className="main-eyebrow">SNM Bangalore · Parking</p>
+            <h1 className="main-title">Today</h1>
             <p className="main-sub">
-              {today.length} vehicle{today.length === 1 ? '' : 's'} · {all.length} in master · oldest
-              at top
+              {today.length === 0
+                ? 'No vehicles added yet'
+                : today.length === 1
+                  ? '1 vehicle'
+                  : `${today.length} vehicles`}
+              {listsLoading ? '' : ` · ${all.length} on the master list`}
             </p>
           </div>
           <div className="main-header__actions">
@@ -375,7 +379,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
                 onClick={() => setAdminOpen(true)}
                 disabled={busy}
               >
-                Manage access
+                Manage staff
               </button>
             ) : null}
             <button
@@ -424,15 +428,15 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
       </div>
 
       <div className="main-root__scroll">
-        <section className="list-section" aria-label="Today’s parking list">
+        <section className="list-section" aria-label="Today’s vehicles">
           {listsLoading ? (
-            <LoadingSpinner label="Loading today’s list…" padded />
+            <LoadingSpinner label="Loading…" padded />
           ) : today.length === 0 ? (
             <div className="empty-card">
               <p className="empty-card__title">No vehicles yet</p>
               <p className="empty-card__hint">
-                Use <strong>Add new</strong> for a fresh entry, or <strong>Add from list</strong> to
-                copy from the master list.
+                Tap <strong>Add new</strong>, or <strong>Add from list</strong> to pick someone
+                already saved.
               </p>
             </div>
           ) : (
@@ -493,7 +497,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
 
       {addOpen ? (
         <ModalFrame
-          title="Add new vehicle"
+          title="Add vehicle"
           titleId="add-title"
           onClose={closeAdd}
           locked={busy}
@@ -593,22 +597,21 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
           <input
             id="master-search"
             className="field-input field-input--search"
-            placeholder="Search by name or vehicle number…"
+            placeholder="Name or vehicle number"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             autoComplete="off"
             disabled={busy || listsLoading}
           />
           <p className="modal-hint">
-            Drag a row left for <strong>Edit</strong> or <strong>Delete</strong>. Short tap still
-            adds to today’s list.
+            Tap a row to add it for today. Swipe left to edit or delete.
           </p>
           {listsLoading ? (
-            <LoadingSpinner label="Loading master list…" padded />
+            <LoadingSpinner label="Loading…" padded />
           ) : (
           <ul className="master-list">
             {filteredMaster.length === 0 ? (
-              <li className="master-empty">No matches.</li>
+              <li className="master-empty">Nothing matched that search.</li>
             ) : (
               filteredMaster.map((row, index) => {
                 const swipeKey = `m-${row.id}`
@@ -665,7 +668,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
 
       {confirmAdd ? (
         <ModalFrame
-          title="Add to today?"
+          title="Add for today?"
           titleId="confirm-title"
           onClose={() => !busy && setConfirmAdd(null)}
           locked={busy}
@@ -764,8 +767,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
             </label>
           </div>
           <p className="modal-hint modal-hint--tight">
-            Saves to Firestore for both <strong>master</strong> and <strong>today</strong> wherever
-            this vehicle number appears.
+            Changes apply on the master list and on today if this number is there too.
           </p>
           <div className="modal-footer">
             <button type="button" className="btn btn-secondary" onClick={closeEdit} disabled={busy}>
@@ -792,13 +794,13 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
 
       {deleteAllOpen ? (
         <ModalFrame
-          title="Clear today’s list?"
+          title="Clear today?"
           titleId="dall-title"
           onClose={() => !busy && setDeleteAllOpen(false)}
           locked={busy}
         >
           <p className="modal-lead">
-            This removes every vehicle from today’s list. You cannot undo this.
+            This clears every vehicle from today. The master list stays as it is.
           </p>
           <div className="modal-footer">
             <button
@@ -830,13 +832,13 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
 
       {callConfirm ? (
         <ModalFrame
-          title="Place call"
+          title="Call?"
           titleId="call-title"
           onClose={() => setCallConfirm(null)}
         >
           <p className="modal-lead">
-            Call <strong className="text-emphasis">{callConfirm.entry1}</strong> on{' '}
-            <strong className="text-emphasis">{callConfirm.entry3}</strong>?
+            Call <strong className="text-emphasis">{callConfirm.entry1}</strong> (
+            <strong className="text-emphasis">{callConfirm.entry3}</strong>)?
           </p>
           <div className="modal-footer">
             <button type="button" className="btn btn-secondary" onClick={() => setCallConfirm(null)}>
@@ -867,7 +869,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
         aria-labelledby="delete-confirm-title"
       >
         <p id="delete-confirm-title" className="delete-confirm-toast__title">
-          Are you sure you want to delete?
+          Delete this vehicle?
         </p>
         <p className="delete-confirm-toast__meta">
           <strong>{deleteConfirm.row.data.entry1}</strong>
@@ -887,8 +889,8 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
         )}
         <p className="delete-confirm-toast__hint">
           {deleteConfirm.kind === 'today'
-            ? 'Removes this vehicle from today’s list only. The master list is unchanged.'
-            : 'Removes this vehicle from the master database. Matching rows on today’s list are not removed automatically.'}
+            ? 'Only removes it from today. It stays on the master list.'
+            : 'Removes it from the master list. It will not remove today’s entry by itself.'}
         </p>
         <div className="delete-confirm-toast__actions">
           <button

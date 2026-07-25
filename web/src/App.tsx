@@ -119,7 +119,7 @@ export default function App() {
     return (
       <div className="login-shell">
         <div className="login-card login-card--narrow">
-          <LoadingSpinner label="Checking sign-in…" padded />
+          <LoadingSpinner label="Signing you in…" padded />
         </div>
       </div>
     )
@@ -133,7 +133,7 @@ export default function App() {
     return (
       <div className="login-shell">
         <div className="login-card login-card--narrow">
-          <LoadingSpinner label="Checking access…" padded />
+          <LoadingSpinner label="Checking your access…" padded />
         </div>
       </div>
     )
@@ -146,8 +146,8 @@ export default function App() {
           <h1 className="login-brand">SNM Bangalore</h1>
           <p className="login-sub">Parking</p>
           <p className="login-note login-note--muted">
-            Your request is still <strong>pending</strong>. When an admin approves it, sign in again
-            with the same email and password you chose when you sent the request.
+            Your request is still waiting for approval. Once an admin accepts it, sign in again with
+            the same email and password.
           </p>
           <button type="button" className="btn btn-login" onClick={() => void signOutUser()}>
             Sign out

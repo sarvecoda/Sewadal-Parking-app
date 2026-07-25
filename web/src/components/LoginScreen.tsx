@@ -175,7 +175,7 @@ export function LoginScreen() {
       setRequestPassword('')
       setRequestPasswordConfirm('')
       setRequestOk(
-        'Request sent. After the admin approves it, sign in here with this email and the password you just chose.',
+        'Request sent. After an admin approves you, sign in with this email and password.',
       )
     } catch (err) {
       setError(formatRequestSubmitError(err))
@@ -199,8 +199,8 @@ export function LoginScreen() {
           setResetFeedback('err')
           setResetNote(
             domainConfigured
-              ? 'Enter your email or username above first, then tap Forgot password again.'
-              : 'Enter your full email above, or set VITE_FIREBASE_AUTH_DOMAIN / VITE_LOGIN_EMAIL_DOMAIN in web/.env for short usernames.',
+              ? 'Enter your email or username above, then try Forgot password again.'
+              : 'Enter your full email above, then try Forgot password again.',
           )
           return
         }
@@ -213,7 +213,7 @@ export function LoginScreen() {
         if (methods.length > 0 && !methods.includes('password')) {
           setResetFeedback('err')
           setResetNote(
-            'That address is not set up for a parking password (for example it may be Google-only). Use an account that has Email/Password in Firebase, or type the full email you use for this app.',
+            'This email is not set up for a password login. Use the email/password you use for this parking app.',
           )
           return
         }
@@ -222,7 +222,7 @@ export function LoginScreen() {
       await sendPasswordResetEmail(auth, target)
       setResetFeedback('ok')
       setResetNote(
-        `If an Email/Password account exists for ${maskEmailForUi(target)}, Firebase will send a message there—check inbox and spam and open the link once.`,
+        `If an account exists for ${maskEmailForUi(target)}, a reset email was sent. Check inbox and spam.`,
       )
     } catch (err) {
       setResetFeedback('err')
@@ -270,8 +270,7 @@ export function LoginScreen() {
         {authMode === 'signIn' ? (
           <>
             <p className="login-note login-note--muted">
-              Use your <strong>email</strong> (full address) or a short <strong>username</strong> if
-              your account was set up that way.
+              Sign in with your email, or username if that is how your account was created.
             </p>
             <form className="login-form" onSubmit={(e) => void handleSignIn(e)}>
               <label className="field-label" htmlFor="login-username">
@@ -306,15 +305,15 @@ export function LoginScreen() {
                     {googlePickBusy ? (
                     <span className="btn-loading-row">
                       <LoadingSpinner size="sm" inline quiet />
-                      Opening Google…
+                      Opening…
                     </span>
                   ) : (
-                    'Choose Google account for email'
+                    'Use Google email'
                   )}
                   </button>
                   <span className="login-microcopy__hint">
                     {' '}
-                    — opens Google’s account list, then fills this field with that email.
+                    — fills the email field from your Google account.
                   </span>
                 </p>
               ) : null}
@@ -394,10 +393,8 @@ export function LoginScreen() {
         ) : (
           <>
             <p className="login-note login-note--muted">
-              New staff: choose a <strong>password</strong> you will use to sign in after approval,
-              plus your <strong>work email</strong> and an optional note. Your Firebase account is
-              created now, but parking data stays locked until an <strong>admin</strong> approves
-              the request.
+              New here? Enter your email, choose a password, and send a request. After approval you
+              can sign in with the same details.
             </p>
             <form className="login-form" onSubmit={(e) => void handleRequestAccess(e)}>
               <label className="field-label" htmlFor="request-email">
@@ -431,22 +428,22 @@ export function LoginScreen() {
                     {googlePickBusy ? (
                     <span className="btn-loading-row">
                       <LoadingSpinner size="sm" inline quiet />
-                      Opening Google…
+                      Opening…
                     </span>
                   ) : (
-                    'Choose Google account for email'
+                    'Use Google email'
                   )}
                   </button>
                   <span className="login-microcopy__hint">
                     {' '}
-                    — pick the Google profile you want to use for this request.
+                    — use the Google account for this request.
                   </span>
                 </p>
               ) : null}
 
               <div className="login-password-row">
                 <label className="field-label login-password-label" htmlFor="request-password">
-                  Password (for after approval)
+                  Password
                 </label>
                 <button
                   type="button"
@@ -496,7 +493,7 @@ export function LoginScreen() {
                 name="note"
                 rows={3}
                 maxLength={800}
-                placeholder="Name or role, so the admin knows who you are"
+                placeholder="Your name or seva details (optional)"
                 value={requestNote}
                 onChange={(e) => {
                   setRequestNote(e.target.value)

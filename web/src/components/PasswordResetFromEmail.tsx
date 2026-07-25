@@ -79,7 +79,7 @@ export function PasswordResetFromEmail({
     return (
       <div className="login-shell">
         <div className="login-card">
-          <LoadingSpinner label="Checking reset link…" padded />
+          <LoadingSpinner label="Checking link…" padded />
         </div>
       </div>
     )
@@ -89,13 +89,13 @@ export function PasswordResetFromEmail({
     return (
       <div className="login-shell">
         <div className="login-card">
-          <h1 className="login-brand">Reset link</h1>
+          <h1 className="login-brand">Link expired</h1>
           <p className="login-error" role="alert">
             {error}
           </p>
           <p className="login-note login-note--muted">
-            Request a new email from the sign-in screen. If you use Outlook or corporate mail,
-            try opening the link from a phone or turn off link preview for the message.
+            Ask for a new reset email from the sign-in screen. If the link opened oddly in Outlook,
+            try opening it on your phone.
           </p>
           <button type="button" className="btn btn-login" onClick={() => clearActionFromUrl()}>
             Back to sign in
@@ -108,9 +108,9 @@ export function PasswordResetFromEmail({
   return (
     <div className="login-shell">
       <div className="login-card">
-        <h1 className="login-brand">New password</h1>
+        <h1 className="login-brand">Set password</h1>
         <p className="login-note login-note--muted">
-          Account <strong>{email}</strong>
+          For <strong>{email}</strong>
         </p>
         <form className="login-form" onSubmit={(e) => void handleSubmit(e)}>
           <label className="field-label" htmlFor="reset-pw1">
