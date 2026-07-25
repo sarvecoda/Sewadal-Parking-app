@@ -1,4 +1,5 @@
 import {
+  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -103,8 +104,8 @@ export function subscribeVehicles(
 }
 
 /**
- * Adds the same vehicle to master and today in one atomic batch
- * (safer than two sequential writes if the network drops mid-way).
+ * New vehicle: write master + today in one batch.
+ * Use for “Add new” only — not when copying from master into today.
  */
 export async function addVehicleToBoth(
   db: Firestore,
@@ -117,6 +118,18 @@ export async function addVehicleToBoth(
   batch.set(allRef, v)
   batch.set(todayRef, { ...v, addedAt: serverTimestamp() })
   await batch.commit()
+}
+
+/** Copy an existing master entry onto today’s list only (no second master row). */
+export async function addVehicleToToday(
+  db: Firestore,
+  vehicle: VehicleData,
+): Promise<void> {
+  const v = normalizeVehicle(vehicle)
+  await addDoc(collection(db, TODAY_COLLECTION), {
+    ...v,
+    addedAt: serverTimestamp(),
+  })
 }
 
 export async function deleteVehicleDoc(

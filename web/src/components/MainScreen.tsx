@@ -5,6 +5,7 @@ import type { VehicleData, VehicleDoc } from '../types'
 import { isAppAdmin } from '../adminConfig'
 import {
   addVehicleToBoth,
+  addVehicleToToday,
   deleteAllToday,
   deleteVehicleDoc,
   formatFirestoreError,
@@ -226,7 +227,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     }
     setPending('addFromMaster')
     try {
-      await addVehicleToBoth(db, normalized)
+      await addVehicleToToday(db, normalized)
       setConfirmAdd(null)
       setSearchOpen(false)
       setSearchQuery('')
