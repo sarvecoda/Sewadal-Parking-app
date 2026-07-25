@@ -370,6 +370,15 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
                   : `${today.length} vehicles`}
               {listsLoading ? '' : ` · ${all.length} on the master list`}
             </p>
+            <p className="main-date">
+              {new Intl.DateTimeFormat('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                weekday: 'long',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              }).format(new Date())}
+            </p>
           </div>
           <div className="main-header__actions">
             {canAdmin ? (
