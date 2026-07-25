@@ -9,7 +9,9 @@ import {
   deleteAllToday,
   deleteVehicleDoc,
   formatFirestoreError,
+  formatVehicleNumber,
   normalizeVehicle,
+  plateKey,
   subscribeVehicles,
   updateVehicleDocsForPlate,
 } from '../vehicleRepository'
@@ -179,11 +181,13 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
   const filteredMaster = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     if (!q) return all
-    return all.filter(
-      ({ data: v }) =>
-        v.entry1.toLowerCase().includes(q) ||
-        v.entry2.toLowerCase().includes(q),
-    )
+    const qPlate = plateKey(searchQuery)
+    return all.filter(({ data: v }) => {
+      if (v.entry1.toLowerCase().includes(q)) return true
+      if (v.entry2.toLowerCase().includes(q)) return true
+      if (qPlate && plateKey(v.entry2).includes(qPlate)) return true
+      return false
+    })
   }, [all, searchQuery])
 
   async function submitNewVehicle() {
@@ -199,7 +203,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
       entry3: newForm.entry3,
       entry4: newForm.entry4,
     })
-    if (today.some((t) => t.data.entry2 === v.entry2)) {
+    if (today.some((t) => plateKey(t.data.entry2) === plateKey(v.entry2))) {
       showToast('This vehicle number is already on today’s list')
       return
     }
@@ -220,7 +224,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
   async function confirmAddToToday() {
     if (!confirmAdd) return
     const normalized = normalizeVehicle(confirmAdd)
-    if (today.some((t) => t.data.entry2 === normalized.entry2)) {
+    if (today.some((t) => plateKey(t.data.entry2) === plateKey(normalized.entry2))) {
       showToast('This vehicle is already in the list')
       setConfirmAdd(null)
       return
@@ -288,9 +292,9 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
       setFormError(err)
       return
     }
-    const newP = editForm.entry2.trim().toLowerCase()
-    if (newP !== oldPlate.toLowerCase()) {
-      const clash = [...all, ...today].some((r) => r.data.entry2.trim().toLowerCase() === newP)
+    const newP = plateKey(editForm.entry2)
+    if (newP !== plateKey(oldPlate)) {
+      const clash = [...all, ...today].some((r) => plateKey(r.data.entry2) === newP)
       if (clash) {
         setFormError('That vehicle number is already in use.')
         return
@@ -516,9 +520,17 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
               <input
                 className="field-input"
                 value={newForm.entry2}
+                autoCapitalize="characters"
+                spellCheck={false}
                 onChange={(e) => {
                   setNewForm((f) => ({ ...f, entry2: e.target.value }))
                   setFormError(null)
+                }}
+                onBlur={() => {
+                  setNewForm((f) => ({
+                    ...f,
+                    entry2: formatVehicleNumber(f.entry2),
+                  }))
                 }}
               />
             </label>
@@ -719,9 +731,17 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
               <input
                 className="field-input"
                 value={editForm.entry2}
+                autoCapitalize="characters"
+                spellCheck={false}
                 onChange={(e) => {
                   setEditForm((f) => ({ ...f, entry2: e.target.value }))
                   setFormError(null)
+                }}
+                onBlur={() => {
+                  setEditForm((f) => ({
+                    ...f,
+                    entry2: formatVehicleNumber(f.entry2),
+                  }))
                 }}
               />
             </label>

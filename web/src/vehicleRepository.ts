@@ -14,6 +14,9 @@ import {
 } from 'firebase/firestore'
 import type { VehicleData, VehicleDoc } from './types'
 import { VEHICLE_FIELD_MAX_LENGTH } from './types'
+import { formatVehicleNumber, plateKey } from './plateFormat'
+
+export { formatVehicleNumber, plateKey } from './plateFormat'
 
 /**
  * Web vehicle collections (cloned from Android’s `your_collection` / `your_collection1`).
@@ -51,12 +54,12 @@ function clip(s: string): string {
   return s.trim().slice(0, VEHICLE_FIELD_MAX_LENGTH)
 }
 
-/** Normalizes strings before write (trim + max length). */
+/** Normalizes strings before write (trim, max length, plate format). */
 export function normalizeVehicle(input: VehicleData): VehicleData {
   return {
     id: input.id ?? 0,
     entry1: clip(input.entry1),
-    entry2: clip(input.entry2),
+    entry2: formatVehicleNumber(input.entry2),
     entry3: clip(input.entry3),
     entry4: clip(input.entry4),
   }
@@ -151,7 +154,7 @@ export async function updateVehicleDocsForPlate(
   masterDocs: VehicleDoc[],
   todayDocs: VehicleDoc[],
 ): Promise<void> {
-  const key = oldPlate.trim().toLowerCase()
+  const key = plateKey(oldPlate)
   const v = normalizeVehicle(newData)
   const payload = {
     id: v.id,
@@ -163,13 +166,13 @@ export async function updateVehicleDocsForPlate(
   const batch = writeBatch(db)
   let n = 0
   for (const row of masterDocs) {
-    if (row.data.entry2.trim().toLowerCase() === key) {
+    if (plateKey(row.data.entry2) === key) {
       batch.update(doc(db, ALL_COLLECTION, row.id), payload)
       n++
     }
   }
   for (const row of todayDocs) {
-    if (row.data.entry2.trim().toLowerCase() === key) {
+    if (plateKey(row.data.entry2) === key) {
       batch.update(doc(db, TODAY_COLLECTION, row.id), payload)
       n++
     }
