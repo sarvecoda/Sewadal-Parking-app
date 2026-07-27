@@ -388,7 +388,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
                 onClick={() => setAdminOpen(true)}
                 disabled={busy}
               >
-                Manage staff
+                Manage Saints
               </button>
             ) : null}
             <button

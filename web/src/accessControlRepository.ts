@@ -191,7 +191,7 @@ export async function approveAccessRequestFirestore(
     }
     const staffSnap = await getDoc(doc(db, APP_USERS, requestUid))
     if (staffSnap.exists()) {
-      throw new Error('That user is already on the staff list.')
+      throw new Error('That user is already on the Saints list.')
     }
 
     batch.update(doc(db, ACCESS_REQUESTS, requestId), {
@@ -249,7 +249,7 @@ export async function removeAppUserRecord(
   const userRef = doc(db, APP_USERS, targetUid)
   const userSnap = await getDoc(userRef)
   if (!userSnap.exists()) {
-    throw new Error('That person is not on the staff list.')
+    throw new Error('That person is not on the Saints list.')
   }
   const u = userSnap.data() as { email?: string; accessRequestId?: string }
   const batch = writeBatch(db)

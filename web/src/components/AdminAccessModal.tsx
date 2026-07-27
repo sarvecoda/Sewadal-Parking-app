@@ -102,7 +102,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
     if (uid === authUser.uid) return
     if (
       !window.confirm(
-        'Remove this person from parking staff? They will need approval again to get back in. Their login account stays until you delete it in Firebase Authentication.',
+        'Remove this person from Saints? They will need approval again to get back in. Their login account stays until you delete it in Firebase Authentication.',
       )
     )
       return
@@ -126,7 +126,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
 
   return (
     <ModalFrame
-      title="Staff access"
+      title="Saints access"
       titleId="admin-access-title"
       onClose={onClose}
       variant="tall"
@@ -148,7 +148,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
           onClick={() => setTab('users')}
           disabled={busy}
         >
-          Staff
+          Saints
         </button>
       </div>
 
