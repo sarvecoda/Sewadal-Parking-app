@@ -50,3 +50,22 @@ export function LoadingSpinner({
     </div>
   )
 }
+
+/** Button label that swaps to a small spinner + `busyText` while an action runs. */
+export function BusyLabel({
+  busy,
+  busyText,
+  children,
+}: {
+  busy: boolean
+  busyText: string
+  children: React.ReactNode
+}) {
+  if (!busy) return <>{children}</>
+  return (
+    <span className="btn-loading-row">
+      <LoadingSpinner size="sm" inline quiet />
+      {busyText}
+    </span>
+  )
+}

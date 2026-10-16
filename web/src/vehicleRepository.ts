@@ -3,11 +3,9 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDocs,
-  limit,
   onSnapshot,
-  query,
   serverTimestamp,
+  setDoc,
   writeBatch,
   type Firestore,
   type Unsubscribe,
@@ -27,11 +25,12 @@ const ALL_COLLECTION =
 const TODAY_COLLECTION =
   import.meta.env.VITE_FIRESTORE_TODAY_COLLECTION?.trim() || 'my_new_collection_1'
 
-/** Firestore allows at most 500 operations per batch. */
-const BATCH_DELETE_LIMIT = 450
-
 function colRef(db: Firestore, today: boolean) {
   return collection(db, today ? TODAY_COLLECTION : ALL_COLLECTION)
+}
+
+export function todayCollection(db: Firestore) {
+  return colRef(db, true)
 }
 
 function docAddedAtMillis(data: VehicleData): number {
@@ -143,6 +142,15 @@ export async function deleteVehicleDoc(
   await deleteDoc(doc(db, today ? TODAY_COLLECTION : ALL_COLLECTION, docId))
 }
 
+/** Puts a just-deleted document back under its old id (keeps `addedAt`, so order is kept). */
+export async function restoreVehicleDoc(
+  db: Firestore,
+  row: VehicleDoc,
+  today: boolean,
+): Promise<void> {
+  await setDoc(doc(db, today ? TODAY_COLLECTION : ALL_COLLECTION, row.id), row.data)
+}
+
 /**
  * Updates every master and today document whose `entry2` matches `oldPlate` (case-insensitive),
  * so one edit keeps both lists in sync with Firestore.
@@ -179,19 +187,4 @@ export async function updateVehicleDocsForPlate(
   }
   if (n === 0) return
   await batch.commit()
-}
-
-/**
- * Deletes all documents in today’s collection in chunks (Firestore batch limit).
- */
-export async function deleteAllToday(db: Firestore): Promise<void> {
-  const ref = colRef(db, true)
-  while (true) {
-    const q = query(ref, limit(BATCH_DELETE_LIMIT))
-    const snap = await getDocs(q)
-    if (snap.empty) return
-    const batch = writeBatch(db)
-    snap.forEach((d) => batch.delete(d.ref))
-    await batch.commit()
-  }
 }

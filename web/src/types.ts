@@ -16,3 +16,8 @@ export type VehicleDoc = {
 
 /** Max characters per string field stored in Firestore. */
 export const VEHICLE_FIELD_MAX_LENGTH = 120
+
+/** Add / Edit form fields (same names as the Firestore document). */
+export type VehicleForm = Pick<VehicleData, 'entry1' | 'entry2' | 'entry3' | 'entry4'>
+
+export const EMPTY_VEHICLE_FORM: VehicleForm = { entry1: '', entry2: '', entry3: '', entry4: '' }

@@ -1,26 +1,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { User } from 'firebase/auth'
 import type { Firestore } from 'firebase/firestore'
-import type { VehicleData, VehicleDoc } from '../types'
+import { EMPTY_VEHICLE_FORM, type VehicleData, type VehicleDoc, type VehicleForm } from '../types'
 import { isAppAdmin } from '../adminConfig'
 import {
   addVehicleToBoth,
   addVehicleToToday,
-  deleteAllToday,
   deleteVehicleDoc,
   formatFirestoreError,
-  formatVehicleNumber,
   normalizeVehicle,
   plateKey,
+  restoreVehicleDoc,
   subscribeVehicles,
   updateVehicleDocsForPlate,
 } from '../vehicleRepository'
+import { archiveAndClearToday } from '../historyRepository'
 import { clearLegacySession } from './LegacyLoginScreen'
 import { AdminAccessModal } from './AdminAccessModal'
+import { HistoryModal } from './HistoryModal'
 import { signOutUser } from '../firebase'
-import { LoadingSpinner } from './LoadingSpinner'
+import { BusyLabel, LoadingSpinner } from './LoadingSpinner'
+import { MasterListModal } from './MasterListModal'
 import { ModalFrame } from './ModalFrame'
 import { SwipeActionRow } from './SwipeActionRow'
+import { VehicleFormModal } from './VehicleFormModal'
 
 type Props = {
   db: Firestore
@@ -29,25 +32,24 @@ type Props = {
   onLegacyLogout?: () => void
 }
 
-type Pending =
-  | null
-  | 'addNew'
-  | 'addFromMaster'
-  | 'deleteOne'
-  | 'deleteAll'
-  | 'editSave'
+type Pending = null | 'addNew' | 'addFromMaster' | 'deleteOne' | 'deleteAll' | 'editSave'
+
+type Toast = { message: string; undo?: () => void }
+
+const TODAY_LABEL = new Intl.DateTimeFormat('en-IN', {
+  timeZone: 'Asia/Kolkata',
+  weekday: 'long',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+})
 
 function telHref(phone: string): string | null {
   const cleaned = phone.replace(/[^\d+]/g, '')
   return cleaned ? `tel:${cleaned}` : null
 }
 
-function validateNewVehicle(form: {
-  entry1: string
-  entry2: string
-  entry3: string
-  entry4: string
-}): string | null {
+function validateVehicleForm(form: VehicleForm): string | null {
   if (!form.entry1.trim()) return 'Name is required.'
   if (!form.entry2.trim()) return 'Vehicle number is required.'
   return null
@@ -60,17 +62,25 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
   const [todayHydrated, setTodayHydrated] = useState(false)
   const [masterHydrated, setMasterHydrated] = useState(false)
   const listsLoading = !todayHydrated || !masterHydrated
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<Toast | null>(null)
+  const toastTimer = useRef<number | undefined>(undefined)
   const [fireErr, setFireErr] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending>(null)
   const [formError, setFormError] = useState<string | null>(null)
-
   const busy = pending !== null
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg)
-    window.setTimeout(() => setToast(null), 2600)
+  const hideToast = useCallback(() => {
+    window.clearTimeout(toastTimer.current)
+    setToast(null)
   }, [])
+
+  const showToast = useCallback((message: string, undo?: () => void) => {
+    window.clearTimeout(toastTimer.current)
+    setToast({ message, undo })
+    toastTimer.current = window.setTimeout(() => setToast(null), undo ? 5000 : 2600)
+  }, [])
+
+  useEffect(() => () => window.clearTimeout(toastTimer.current), [])
 
   useEffect(() => {
     setMasterHydrated(false)
@@ -108,7 +118,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
   const [addOpen, setAddOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
-
+  const [historyOpen, setHistoryOpen] = useState(false)
   const canAdmin = isAppAdmin(authUser)
   const [confirmAdd, setConfirmAdd] = useState<VehicleData | null>(null)
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
@@ -119,27 +129,33 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
   const editInitialPlateRef = useRef('')
   const [deleteAllOpen, setDeleteAllOpen] = useState(false)
   const [callConfirm, setCallConfirm] = useState<VehicleData | null>(null)
+  const [newForm, setNewForm] = useState<VehicleForm>(EMPTY_VEHICLE_FORM)
+  /** Plate last checked against the master list (on blur / Save) in the Add form. */
+  const [addCheckedPlate, setAddCheckedPlate] = useState('')
+  const [editForm, setEditForm] = useState<VehicleForm>(EMPTY_VEHICLE_FORM)
 
-  const [newForm, setNewForm] = useState({
-    entry1: '',
-    entry2: '',
-    entry3: '',
-    entry4: '',
-  })
+  const todayPlateKeys = useMemo(
+    () => new Set(today.map((t) => plateKey(t.data.entry2))),
+    [today],
+  )
 
-  const [editForm, setEditForm] = useState({
-    entry1: '',
-    entry2: '',
-    entry3: '',
-    entry4: '',
-  })
+  /** Master entry with the same plate as the Add form, once that plate has been checked. */
+  const addMatch = useMemo(() => {
+    const key = plateKey(newForm.entry2)
+    if (!key || plateKey(addCheckedPlate) !== key) return null
+    return all.find((r) => plateKey(r.data.entry2) === key) ?? null
+  }, [all, newForm.entry2, addCheckedPlate])
 
-  const [searchQuery, setSearchQuery] = useState('')
+  const swipeChange = useCallback((key: string, open: boolean) => {
+    setOpenSwipeId((cur) => {
+      if (open) return key
+      return cur === key ? null : cur
+    })
+  }, [])
 
   const closeSearch = useCallback(() => {
     if (busy) return
     setSearchOpen(false)
-    setSearchQuery('')
     setOpenSwipeId(null)
     setDeleteConfirm(null)
   }, [busy])
@@ -159,6 +175,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
       else if (editVehicle) setEditVehicle(null)
       else if (deleteAllOpen) setDeleteAllOpen(false)
       else if (callConfirm) setCallConfirm(null)
+      else if (historyOpen) setHistoryOpen(false)
       else if (addOpen) closeAdd()
       else if (searchOpen) closeSearch()
     }
@@ -172,38 +189,27 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     editVehicle,
     deleteAllOpen,
     callConfirm,
+    historyOpen,
     addOpen,
     searchOpen,
     closeAdd,
     closeSearch,
   ])
 
-  const filteredMaster = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
-    if (!q) return all
-    const qPlate = plateKey(searchQuery)
-    return all.filter(({ data: v }) => {
-      if (v.entry1.toLowerCase().includes(q)) return true
-      if (v.entry2.toLowerCase().includes(q)) return true
-      if (qPlate && plateKey(v.entry2).includes(qPlate)) return true
-      return false
-    })
-  }, [all, searchQuery])
-
   async function submitNewVehicle() {
-    const err = validateNewVehicle(newForm)
+    const err = validateVehicleForm(newForm)
     if (err) {
       setFormError(err)
       return
     }
-    const v = normalizeVehicle({
-      id: 0,
-      entry1: newForm.entry1,
-      entry2: newForm.entry2,
-      entry3: newForm.entry3,
-      entry4: newForm.entry4,
-    })
-    if (today.some((t) => plateKey(t.data.entry2) === plateKey(v.entry2))) {
+    const v = normalizeVehicle({ id: 0, ...newForm })
+    const key = plateKey(v.entry2)
+    if (all.some((r) => plateKey(r.data.entry2) === key)) {
+      setNewForm((f) => ({ ...f, entry2: v.entry2 }))
+      setAddCheckedPlate(v.entry2)
+      return
+    }
+    if (todayPlateKeys.has(key)) {
       showToast('This number is already on today’s list')
       return
     }
@@ -212,7 +218,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     try {
       await addVehicleToBoth(db, v)
       setAddOpen(false)
-      setNewForm({ entry1: '', entry2: '', entry3: '', entry4: '' })
+      setNewForm(EMPTY_VEHICLE_FORM)
       showToast('Added')
     } catch (e) {
       setFireErr(formatFirestoreError(e))
@@ -221,20 +227,17 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     }
   }
 
-  async function confirmAddToToday() {
-    if (!confirmAdd) return
-    const normalized = normalizeVehicle(confirmAdd)
-    if (today.some((t) => plateKey(t.data.entry2) === plateKey(normalized.entry2))) {
+  /** Adds an existing master entry to today (never writes a new master row). */
+  async function addToToday(data: VehicleData, onDone: () => void) {
+    if (todayPlateKeys.has(plateKey(data.entry2))) {
       showToast('Already on today’s list')
-      setConfirmAdd(null)
+      onDone()
       return
     }
     setPending('addFromMaster')
     try {
-      await addVehicleToToday(db, normalized)
-      setConfirmAdd(null)
-      setSearchOpen(false)
-      setSearchQuery('')
+      await addVehicleToToday(db, data)
+      onDone()
       showToast('Added for today')
     } catch (e) {
       setFireErr(formatFirestoreError(e))
@@ -243,22 +246,26 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     }
   }
 
+  function pickFromMaster(row: VehicleDoc) {
+    if (todayPlateKeys.has(plateKey(row.data.entry2))) showToast('Already on today’s list')
+    else setConfirmAdd({ ...row.data })
+  }
+
   async function executeConfirmedDelete() {
     if (!deleteConfirm) return
     const { row, kind } = deleteConfirm
+    const isToday = kind === 'today'
     setPending('deleteOne')
     try {
-      if (kind === 'today') {
-        await deleteVehicleDoc(db, row.id, true)
-        setOpenSwipeId((cur) => (cur === row.id ? null : cur))
-        showToast('Removed from today')
-      } else {
-        const swipeKey = `m-${row.id}`
-        await deleteVehicleDoc(db, row.id, false)
-        setOpenSwipeId((cur) => (cur === swipeKey ? null : cur))
-        showToast('Removed from master list')
-      }
+      await deleteVehicleDoc(db, row.id, isToday)
+      const swipeKey = isToday ? row.id : `m-${row.id}`
+      setOpenSwipeId((cur) => (cur === swipeKey ? null : cur))
       setDeleteConfirm(null)
+      showToast(isToday ? 'Removed from today' : 'Removed from master list', () => {
+        restoreVehicleDoc(db, row, isToday)
+          .then(() => showToast('Restored'))
+          .catch((e) => setFireErr(formatFirestoreError(e)))
+      })
     } catch (e) {
       setFireErr(formatFirestoreError(e))
     } finally {
@@ -287,7 +294,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
   async function saveEditVehicle() {
     if (!editVehicle) return
     const oldPlate = editInitialPlateRef.current
-    const err = validateNewVehicle(editForm)
+    const err = validateVehicleForm(editForm)
     if (err) {
       setFormError(err)
       return
@@ -303,19 +310,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
     setFormError(null)
     setPending('editSave')
     try {
-      await updateVehicleDocsForPlate(
-        db,
-        oldPlate,
-        {
-          id: 0,
-          entry1: editForm.entry1,
-          entry2: editForm.entry2,
-          entry3: editForm.entry3,
-          entry4: editForm.entry4,
-        },
-        all,
-        today,
-      )
+      await updateVehicleDocsForPlate(db, oldPlate, { id: 0, ...editForm }, all, today)
       setEditVehicle(null)
       showToast('Updated')
     } catch (e) {
@@ -328,7 +323,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
   async function wipeToday() {
     setPending('deleteAll')
     try {
-      await deleteAllToday(db)
+      await archiveAndClearToday(db, authUser?.uid ?? null)
       setDeleteAllOpen(false)
       showToast('Today cleared')
     } catch (e) {
@@ -370,26 +365,28 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
                   : `${today.length} vehicles`}
               {listsLoading ? '' : ` · ${all.length} on the master list`}
             </p>
-            <p className="main-date">
-              {new Intl.DateTimeFormat('en-IN', {
-                timeZone: 'Asia/Kolkata',
-                weekday: 'long',
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              }).format(new Date())}
-            </p>
+            <p className="main-date">{TODAY_LABEL.format(new Date())}</p>
           </div>
           <div className="main-header__actions">
             {canAdmin ? (
-              <button
-                type="button"
-                className="btn-pill btn-pill--ghost"
-                onClick={() => setAdminOpen(true)}
-                disabled={busy}
-              >
-                Manage Saints
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="btn-pill btn-pill--ghost"
+                  onClick={() => setAdminOpen(true)}
+                  disabled={busy}
+                >
+                  Manage Saints
+                </button>
+                <button
+                  type="button"
+                  className="btn-pill btn-pill--ghost"
+                  onClick={() => setHistoryOpen(true)}
+                  disabled={busy}
+                >
+                  History
+                </button>
+              </>
             ) : null}
             <button
               type="button"
@@ -454,12 +451,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
                 <li key={row.id} className="vehicle-list__item">
                   <SwipeActionRow
                     isOpen={openSwipeId === row.id}
-                    onOpenChange={(open) =>
-                      setOpenSwipeId((cur) => {
-                        if (open) return row.id
-                        return cur === row.id ? null : cur
-                      })
-                    }
+                    onOpenChange={(open) => swipeChange(row.id, open)}
                     onEdit={() => beginEdit(row)}
                     onDelete={() => setDeleteConfirm({ row, kind: 'today' })}
                     disabled={busy}
@@ -502,177 +494,92 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
         </button>
       </div>
 
-      {toast ? <div className="toast">{toast}</div> : null}
-
-      {addOpen ? (
-        <ModalFrame
-          title="Add vehicle"
-          titleId="add-title"
-          onClose={closeAdd}
-          locked={busy}
-        >
-          {formError ? (
-            <p className="form-error" role="alert">
-              {formError}
-            </p>
-          ) : null}
-          <div className="modal-fields">
-            <label className="field-label field-label--modal">
-              Name
-              <input
-                className="field-input"
-                value={newForm.entry1}
-                onChange={(e) => {
-                  setNewForm((f) => ({ ...f, entry1: e.target.value }))
-                  setFormError(null)
-                }}
-              />
-            </label>
-            <label className="field-label field-label--modal">
-              Vehicle number
-              <input
-                className="field-input"
-                value={newForm.entry2}
-                autoCapitalize="characters"
-                spellCheck={false}
-                onChange={(e) => {
-                  setNewForm((f) => ({ ...f, entry2: e.target.value }))
-                  setFormError(null)
-                }}
-                onBlur={() => {
-                  setNewForm((f) => ({
-                    ...f,
-                    entry2: formatVehicleNumber(f.entry2),
-                  }))
-                }}
-              />
-            </label>
-            <label className="field-label field-label--modal">
-              Mobile
-              <input
-                className="field-input"
-                inputMode="tel"
-                value={newForm.entry3}
-                onChange={(e) =>
-                  setNewForm((f) => ({ ...f, entry3: e.target.value }))
-                }
-              />
-            </label>
-            <label className="field-label field-label--modal">
-              Model
-              <input
-                className="field-input"
-                value={newForm.entry4}
-                onChange={(e) =>
-                  setNewForm((f) => ({ ...f, entry4: e.target.value }))
-                }
-              />
-            </label>
-          </div>
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={closeAdd} disabled={busy}>
-              Cancel
-            </button>
+      {toast ? (
+        <div className="toast" role="status">
+          <span>{toast.message}</span>
+          {toast.undo ? (
             <button
               type="button"
-              className="btn btn-primary"
-              onClick={() => void submitNewVehicle()}
-              disabled={busy}
+              className="toast__undo"
+              onClick={() => {
+                const undo = toast.undo
+                hideToast()
+                undo?.()
+              }}
             >
-              {pending === 'addNew' ? (
-                <span className="btn-loading-row">
-                  <LoadingSpinner size="sm" inline quiet />
-                  Saving…
-                </span>
-              ) : (
-                'Save'
-              )}
+              Undo
             </button>
-          </div>
-        </ModalFrame>
+          ) : null}
+        </div>
+      ) : null}
+
+      {addOpen ? (
+        <VehicleFormModal
+          title="Add vehicle"
+          titleId="add-title"
+          form={newForm}
+          onChange={(patch) => {
+            setNewForm((f) => ({ ...f, ...patch }))
+            setFormError(null)
+          }}
+          onPlateBlur={setAddCheckedPlate}
+          error={formError}
+          notice={
+            addMatch ? (
+              <div className="saved-match" role="status">
+                <p className="saved-match__title">This vehicle is already saved</p>
+                <p className="saved-match__line">
+                  <strong>{addMatch.data.entry1 || 'No name'}</strong> · {addMatch.data.entry2}
+                </p>
+                {addMatch.data.entry3 || addMatch.data.entry4 ? (
+                  <p className="saved-match__sub">
+                    {[addMatch.data.entry3, addMatch.data.entry4].filter(Boolean).join(' · ')}
+                  </p>
+                ) : null}
+                {todayPlateKeys.has(plateKey(addMatch.data.entry2)) ? (
+                  <p className="saved-match__note">It’s already on today’s list.</p>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-block"
+                    disabled={busy}
+                    onClick={() =>
+                      void addToToday(addMatch.data, () => {
+                        setAddOpen(false)
+                        setNewForm(EMPTY_VEHICLE_FORM)
+                        setAddCheckedPlate('')
+                      })
+                    }
+                  >
+                    <BusyLabel busy={pending === 'addFromMaster'} busyText="Adding…">
+                      Add to today
+                    </BusyLabel>
+                  </button>
+                )}
+              </div>
+            ) : null
+          }
+          busy={busy}
+          saving={pending === 'addNew'}
+          saveDisabled={addMatch !== null}
+          onSave={() => void submitNewVehicle()}
+          onClose={closeAdd}
+        />
       ) : null}
 
       {searchOpen ? (
-        <ModalFrame
-          title="Master list"
-          titleId="search-title"
+        <MasterListModal
+          rows={all}
+          todayPlateKeys={todayPlateKeys}
+          loading={listsLoading}
+          busy={busy}
+          openSwipeId={openSwipeId}
+          onSwipeChange={swipeChange}
+          onPick={pickFromMaster}
+          onEdit={beginEdit}
+          onDelete={(row) => setDeleteConfirm({ row, kind: 'master' })}
           onClose={closeSearch}
-          variant="tall"
-          locked={busy}
-        >
-          <label className="sr-only" htmlFor="master-search">
-            Search master list
-          </label>
-          <input
-            id="master-search"
-            className="field-input field-input--search"
-            placeholder="Name or vehicle number"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            autoComplete="off"
-            disabled={busy || listsLoading}
-          />
-          <p className="modal-hint">
-            Tap a row to add it for today. Swipe left to edit or delete.
-          </p>
-          {listsLoading ? (
-            <LoadingSpinner label="Loading…" padded />
-          ) : (
-          <ul className="master-list">
-            {filteredMaster.length === 0 ? (
-              <li className="master-empty">Nothing matched that search.</li>
-            ) : (
-              filteredMaster.map((row, index) => {
-                const swipeKey = `m-${row.id}`
-                return (
-                  <li key={row.id} className="master-list__item">
-                    <SwipeActionRow
-                      isOpen={openSwipeId === swipeKey}
-                      onOpenChange={(open) =>
-                        setOpenSwipeId((cur) => {
-                          if (open) return swipeKey
-                          return cur === swipeKey ? null : cur
-                        })
-                      }
-                      onEdit={() => beginEdit(row)}
-                      onDelete={() => setDeleteConfirm({ row, kind: 'master' })}
-                      onRowTap={() => !busy && setConfirmAdd({ ...row.data })}
-                      disabled={busy}
-                    >
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        className={`master-row ${index % 2 === 0 ? 'master-row--a' : 'master-row--b'}`}
-                        onKeyDown={(e) => {
-                          if ((e.key === 'Enter' || e.key === ' ') && !busy) {
-                            e.preventDefault()
-                            setConfirmAdd({ ...row.data })
-                          }
-                        }}
-                      >
-                        <span className="master-row__name">{row.data.entry1}</span>
-                        <span className="master-row__plate">{row.data.entry2}</span>
-                        <span className="master-row__meta">{row.data.entry3}</span>
-                        <span className="master-row__meta">{row.data.entry4}</span>
-                      </div>
-                    </SwipeActionRow>
-                  </li>
-                )
-              })
-            )}
-          </ul>
-          )}
-          <div className="modal-footer modal-footer--single">
-            <button
-              type="button"
-              className="btn btn-secondary btn-block"
-              onClick={closeSearch}
-              disabled={busy}
-            >
-              Done
-            </button>
-          </div>
-        </ModalFrame>
+        />
       ) : null}
 
       {confirmAdd ? (
@@ -698,107 +605,38 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
             <button
               type="button"
               className="btn btn-primary"
-              onClick={() => void confirmAddToToday()}
+              onClick={() =>
+                void addToToday(confirmAdd, () => {
+                  setConfirmAdd(null)
+                  setSearchOpen(false)
+                })
+              }
               disabled={busy}
             >
-              {pending === 'addFromMaster' ? (
-                <span className="btn-loading-row">
-                  <LoadingSpinner size="sm" inline quiet />
-                  Adding…
-                </span>
-              ) : (
-                'Add'
-              )}
+              <BusyLabel busy={pending === 'addFromMaster'} busyText="Adding…">
+                Add
+              </BusyLabel>
             </button>
           </div>
         </ModalFrame>
       ) : null}
 
       {editVehicle ? (
-        <ModalFrame
+        <VehicleFormModal
           title="Edit vehicle"
           titleId="edit-title"
+          form={editForm}
+          onChange={(patch) => {
+            setEditForm((f) => ({ ...f, ...patch }))
+            setFormError(null)
+          }}
+          error={formError}
+          hint="Changes apply on the master list and on today if this number is there too."
+          busy={busy}
+          saving={pending === 'editSave'}
+          onSave={() => void saveEditVehicle()}
           onClose={closeEdit}
-          locked={busy}
-        >
-          {formError ? (
-            <p className="form-error" role="alert">
-              {formError}
-            </p>
-          ) : null}
-          <div className="modal-fields">
-            <label className="field-label field-label--modal">
-              Name
-              <input
-                className="field-input"
-                value={editForm.entry1}
-                onChange={(e) => {
-                  setEditForm((f) => ({ ...f, entry1: e.target.value }))
-                  setFormError(null)
-                }}
-              />
-            </label>
-            <label className="field-label field-label--modal">
-              Vehicle number
-              <input
-                className="field-input"
-                value={editForm.entry2}
-                autoCapitalize="characters"
-                spellCheck={false}
-                onChange={(e) => {
-                  setEditForm((f) => ({ ...f, entry2: e.target.value }))
-                  setFormError(null)
-                }}
-                onBlur={() => {
-                  setEditForm((f) => ({
-                    ...f,
-                    entry2: formatVehicleNumber(f.entry2),
-                  }))
-                }}
-              />
-            </label>
-            <label className="field-label field-label--modal">
-              Mobile
-              <input
-                className="field-input"
-                inputMode="tel"
-                value={editForm.entry3}
-                onChange={(e) => setEditForm((f) => ({ ...f, entry3: e.target.value }))}
-              />
-            </label>
-            <label className="field-label field-label--modal">
-              Model
-              <input
-                className="field-input"
-                value={editForm.entry4}
-                onChange={(e) => setEditForm((f) => ({ ...f, entry4: e.target.value }))}
-              />
-            </label>
-          </div>
-          <p className="modal-hint modal-hint--tight">
-            Changes apply on the master list and on today if this number is there too.
-          </p>
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={closeEdit} disabled={busy}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => void saveEditVehicle()}
-              disabled={busy}
-            >
-              {pending === 'editSave' ? (
-                <span className="btn-loading-row">
-                  <LoadingSpinner size="sm" inline quiet />
-                  Saving…
-                </span>
-              ) : (
-                'Save'
-              )}
-            </button>
-          </div>
-        </ModalFrame>
+        />
       ) : null}
 
       {deleteAllOpen ? (
@@ -809,7 +647,8 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
           locked={busy}
         >
           <p className="modal-lead">
-            This clears every vehicle from today. The master list stays as it is.
+            This clears every vehicle from today. The master list stays as it is, and a copy of
+            today is kept in history.
           </p>
           <div className="modal-footer">
             <button
@@ -826,25 +665,16 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
               onClick={() => void wipeToday()}
               disabled={busy}
             >
-              {pending === 'deleteAll' ? (
-                <span className="btn-loading-row">
-                  <LoadingSpinner size="sm" inline quiet />
-                  Deleting…
-                </span>
-              ) : (
-                'Delete all'
-              )}
+              <BusyLabel busy={pending === 'deleteAll'} busyText="Deleting…">
+                Delete all
+              </BusyLabel>
             </button>
           </div>
         </ModalFrame>
       ) : null}
 
       {callConfirm ? (
-        <ModalFrame
-          title="Call?"
-          titleId="call-title"
-          onClose={() => setCallConfirm(null)}
-        >
+        <ModalFrame title="Call?" titleId="call-title" onClose={() => setCallConfirm(null)}>
           <p className="modal-lead">
             Call <strong className="text-emphasis">{callConfirm.entry1}</strong> (
             <strong className="text-emphasis">{callConfirm.entry3}</strong>)?
@@ -854,11 +684,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
               Cancel
             </button>
             {callHref ? (
-              <a
-                className="btn btn-primary"
-                href={callHref}
-                onClick={() => setCallConfirm(null)}
-              >
+              <a className="btn btn-primary" href={callHref} onClick={() => setCallConfirm(null)}>
                 Call
               </a>
             ) : (
@@ -885,17 +711,13 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
           <span className="delete-confirm-toast__sep"> · </span>
           {deleteConfirm.row.data.entry2}
         </p>
-        {(deleteConfirm.row.data.entry3 || deleteConfirm.row.data.entry4) && (
+        {deleteConfirm.row.data.entry3 || deleteConfirm.row.data.entry4 ? (
           <p className="delete-confirm-toast__sub">
-            {deleteConfirm.row.data.entry3 ? (
-              <span>{deleteConfirm.row.data.entry3}</span>
-            ) : null}
-            {deleteConfirm.row.data.entry3 && deleteConfirm.row.data.entry4 ? (
-              <span className="delete-confirm-toast__sep"> · </span>
-            ) : null}
-            {deleteConfirm.row.data.entry4 ? <span>{deleteConfirm.row.data.entry4}</span> : null}
+            {[deleteConfirm.row.data.entry3, deleteConfirm.row.data.entry4]
+              .filter(Boolean)
+              .join(' · ')}
           </p>
-        )}
+        ) : null}
         <p className="delete-confirm-toast__hint">
           {deleteConfirm.kind === 'today'
             ? 'Only removes it from today. It stays on the master list.'
@@ -916,14 +738,9 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
             onClick={() => void executeConfirmedDelete()}
             disabled={busy}
           >
-            {pending === 'deleteOne' ? (
-              <span className="btn-loading-row">
-                <LoadingSpinner size="sm" inline quiet />
-                Deleting…
-              </span>
-            ) : (
-              'Delete'
-            )}
+            <BusyLabel busy={pending === 'deleteOne'} busyText="Deleting…">
+              Delete
+            </BusyLabel>
           </button>
         </div>
       </div>
@@ -931,6 +748,9 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
 
     {adminOpen && authUser ? (
       <AdminAccessModal db={db} authUser={authUser} onClose={() => setAdminOpen(false)} />
+    ) : null}
+    {historyOpen && canAdmin ? (
+      <HistoryModal db={db} onClose={() => setHistoryOpen(false)} />
     ) : null}
     </>
   )

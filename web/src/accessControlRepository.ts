@@ -92,12 +92,8 @@ export async function listPendingAccessRequests(db: Firestore): Promise<AccessRe
   })
   rows.sort((a, b) => (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0))
 
-  const staleIds: string[] = []
-  for (const r of rows) {
-    if (!(await emailHasFirebasePasswordAccount(r.email))) {
-      staleIds.push(r.id)
-    }
-  }
+  const registered = await Promise.all(rows.map((r) => emailHasFirebasePasswordAccount(r.email)))
+  const staleIds = rows.filter((_, i) => !registered[i]).map((r) => r.id)
   if (staleIds.length > 0) {
     const CHUNK = 400
     for (let i = 0; i < staleIds.length; i += CHUNK) {
@@ -124,12 +120,8 @@ export async function listAppUsersFirestore(db: Firestore): Promise<AppUserRow[]
   })
   rows.sort((a, b) => a.email.localeCompare(b.email))
 
-  const orphanUids: string[] = []
-  for (const r of rows) {
-    if (!(await emailHasFirebasePasswordAccount(r.email))) {
-      orphanUids.push(r.uid)
-    }
-  }
+  const registered = await Promise.all(rows.map((r) => emailHasFirebasePasswordAccount(r.email)))
+  const orphanUids = rows.filter((_, i) => !registered[i]).map((r) => r.uid)
   if (orphanUids.length > 0) {
     const CHUNK = 400
     for (let i = 0; i < orphanUids.length; i += CHUNK) {
