@@ -49,9 +49,7 @@ export async function submitAccessRequestFirestore(
   const mainAuth = getFirebaseAuth()
   const existing = await fetchSignInMethodsForEmail(mainAuth, em)
   if (existing.length > 0) {
-    throw new Error(
-      'That email already has a Firebase account. Try signing in, or use Forgot password on the Sign in tab.',
-    )
+    throw new Error('This email already has an account. Try signing in.')
   }
 
   await createParkingUserWithChosenPassword(em, password)
@@ -177,9 +175,7 @@ export async function approveAccessRequestFirestore(
         status: 'auth_removed',
         handledAt: serverTimestamp(),
       })
-      throw new Error(
-        'That email no longer has a Firebase login (it was probably deleted under Authentication). This request was closed—refresh Pending requests.',
-      )
+      throw new Error('This login was deleted, so the request has been closed.')
     }
     const staffSnap = await getDoc(doc(db, APP_USERS, requestUid))
     if (staffSnap.exists()) {
@@ -203,7 +199,7 @@ export async function approveAccessRequestFirestore(
 
   const methods = await fetchSignInMethodsForEmail(auth, em)
   if (methods.length > 0) {
-    throw new Error('That email already has an account in Firebase.')
+    throw new Error('This email already has an account.')
   }
 
   const uid = await createParkingUserAndSendPasswordReset(em)

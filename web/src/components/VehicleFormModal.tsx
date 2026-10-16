@@ -14,7 +14,6 @@ type Props = {
   error: string | null
   /** Shown above the fields, e.g. “already saved” panel. */
   notice?: ReactNode
-  hint?: ReactNode
   busy: boolean
   saving: boolean
   saveDisabled?: boolean
@@ -31,7 +30,6 @@ export function VehicleFormModal({
   onPlateBlur,
   error,
   notice,
-  hint,
   busy,
   saving,
   saveDisabled = false,
@@ -88,7 +86,6 @@ export function VehicleFormModal({
           />
         </label>
       </div>
-      {hint ? <p className="modal-hint modal-hint--tight">{hint}</p> : null}
       <div className="modal-footer">
         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>
           Cancel

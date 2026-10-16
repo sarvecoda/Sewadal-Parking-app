@@ -440,10 +440,6 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
           ) : today.length === 0 ? (
             <div className="empty-card">
               <p className="empty-card__title">No vehicles yet</p>
-              <p className="empty-card__hint">
-                Tap <strong>Add new</strong>, or <strong>Add from list</strong> to pick someone
-                already saved.
-              </p>
             </div>
           ) : (
             <ul className="vehicle-list">
@@ -527,7 +523,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
           notice={
             addMatch ? (
               <div className="saved-match" role="status">
-                <p className="saved-match__title">This vehicle is already saved</p>
+                <p className="saved-match__title">Already saved</p>
                 <p className="saved-match__line">
                   <strong>{addMatch.data.entry1 || 'No name'}</strong> · {addMatch.data.entry2}
                 </p>
@@ -631,7 +627,6 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
             setFormError(null)
           }}
           error={formError}
-          hint="Changes apply on the master list and on today if this number is there too."
           busy={busy}
           saving={pending === 'editSave'}
           onSave={() => void saveEditVehicle()}
@@ -641,14 +636,13 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
 
       {deleteAllOpen ? (
         <ModalFrame
-          title="Clear today?"
+          title="Clear today’s list?"
           titleId="dall-title"
           onClose={() => !busy && setDeleteAllOpen(false)}
           locked={busy}
         >
           <p className="modal-lead">
-            This clears every vehicle from today. The master list stays as it is, and a copy of
-            today is kept in history.
+            {today.length === 1 ? '1 vehicle' : `${today.length} vehicles`} will be removed.
           </p>
           <div className="modal-footer">
             <button
@@ -704,7 +698,7 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
         aria-labelledby="delete-confirm-title"
       >
         <p id="delete-confirm-title" className="delete-confirm-toast__title">
-          Delete this vehicle?
+          {deleteConfirm.kind === 'today' ? 'Remove from today?' : 'Delete from master list?'}
         </p>
         <p className="delete-confirm-toast__meta">
           <strong>{deleteConfirm.row.data.entry1}</strong>
@@ -718,11 +712,6 @@ export function MainScreen({ db, authUser = null, onLegacyLogout }: Props) {
               .join(' · ')}
           </p>
         ) : null}
-        <p className="delete-confirm-toast__hint">
-          {deleteConfirm.kind === 'today'
-            ? 'Only removes it from today. It stays on the master list.'
-            : 'Removes it from the master list. It will not remove today’s entry by itself.'}
-        </p>
         <div className="delete-confirm-toast__actions">
           <button
             type="button"

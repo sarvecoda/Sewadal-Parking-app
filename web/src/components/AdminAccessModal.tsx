@@ -98,14 +98,9 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
     }
   }
 
-  async function removeStaff(uid: string) {
+  async function removeStaff(uid: string, email: string) {
     if (uid === authUser.uid) return
-    if (
-      !window.confirm(
-        'Remove this person from Saints? They will need approval again to get back in. Their login account stays until you delete it in Firebase Authentication.',
-      )
-    )
-      return
+    if (!window.confirm(`Remove ${email} from Saints?`)) return
     setError(null)
     setBusy(true)
     try {
@@ -161,12 +156,10 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
       {lastApproval ? (
         <div className="admin-access-banner admin-access-banner--ok">
           <p>
-            <strong>{lastApproval.email}</strong> is approved.
-            {lastApproval.emailedReset ? (
-              <> Ask them to check email (and spam) for a password reset link, then sign in.</>
-            ) : (
-              <> They can sign in with the password they chose when requesting access.</>
-            )}
+            <strong>{lastApproval.email}</strong> approved.
+            {lastApproval.emailedReset
+              ? ' A password reset email has been sent to them.'
+              : ' They can sign in now.'}
           </p>
         </div>
       ) : null}
@@ -215,8 +208,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
       ) : (
         <div className="admin-access-list">
           <p className="login-note login-note--muted">
-            <strong>Remove</strong> takes away parking access (they go back to waiting for
-            approval). It does not delete their login. To remove the account fully, delete them in{' '}
+            Remove takes away parking access. To delete a login, use{' '}
             {authUsersConsoleHref ? (
               <a
                 href={authUsersConsoleHref}
@@ -236,7 +228,6 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
               <li key={u.uid} className="admin-access-user">
                 <div className="admin-access-user__meta">
                   <span className="admin-access-user__email">{u.email}</span>
-                  <span className="admin-access-user__uid">{u.uid}</span>
                 </div>
                 {u.uid === authUser.uid ? (
                   <span className="admin-access-user__admin-label">Admin</span>
@@ -245,7 +236,7 @@ export function AdminAccessModal({ db, authUser, onClose }: Props) {
                     type="button"
                     className="btn btn-danger"
                     disabled={busy}
-                    onClick={() => void removeStaff(u.uid)}
+                    onClick={() => void removeStaff(u.uid, u.email)}
                   >
                     Remove
                   </button>

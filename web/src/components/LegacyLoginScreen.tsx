@@ -35,10 +35,6 @@ export function LegacyLoginScreen({ onLoggedIn }: Props) {
         />
         <h1 className="login-brand">SNM Bangalore</h1>
         <p className="login-sub">Parking</p>
-        <p className="login-note">
-          Legacy demo login. Set <code className="login-code">VITE_LEGACY_LOGIN=false</code> and
-          use Firebase email sign-in when your team is ready.
-        </p>
         <form className="login-form" onSubmit={handleSubmit}>
           <label className="field-label">
             Username

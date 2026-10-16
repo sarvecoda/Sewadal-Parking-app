@@ -95,9 +95,7 @@ export function HistoryModal({ db, onClose }: { db: Firestore; onClose: () => vo
         </>
       ) : (
         <>
-          <p className="modal-hint">
-            Saved each time today’s list is cleared. Kept for {HISTORY_KEEP_DAYS} days.
-          </p>
+          <p className="modal-hint">Last {HISTORY_KEEP_DAYS} days</p>
           {days.length === 0 ? (
             <p className="master-empty">Nothing saved yet.</p>
           ) : (

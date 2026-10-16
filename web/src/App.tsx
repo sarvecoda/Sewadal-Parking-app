@@ -146,8 +146,7 @@ export default function App() {
           <h1 className="login-brand">SNM Bangalore</h1>
           <p className="login-sub">Parking</p>
           <p className="login-note login-note--muted">
-            Your request is still waiting for approval. Once an admin accepts it, sign in again with
-            the same email and password.
+            Waiting for admin approval. Sign in again once you’re approved.
           </p>
           <button type="button" className="btn btn-login" onClick={() => void signOutUser()}>
             Sign out

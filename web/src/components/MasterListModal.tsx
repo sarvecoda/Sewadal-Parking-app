@@ -64,7 +64,7 @@ export function MasterListModal({
         autoComplete="off"
         disabled={busy || loading}
       />
-      <p className="modal-hint">Tap a row to add it for today. Swipe left to edit or delete.</p>
+      <p className="modal-hint">Tap to add. Swipe left to edit or delete.</p>
       {loading ? (
         <LoadingSpinner label="Loading…" padded />
       ) : (

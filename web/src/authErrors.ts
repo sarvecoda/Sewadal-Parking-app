@@ -26,7 +26,7 @@ export function formatAuthError(err: unknown): string {
         return 'Password sign-in is not enabled yet. Ask an admin to turn it on.'
       case 'auth/expired-action-code':
       case 'auth/invalid-action-code':
-        return 'This reset link is expired or already used. Request a new one and open it once from your mail app.'
+        return 'This reset link has expired. Request a new one from sign in.'
       default:
         break
     }
@@ -38,7 +38,7 @@ export function formatAuthError(err: unknown): string {
       m.includes('already been used') ||
       m.includes('invalid action code')
     ) {
-      return 'This reset link is expired or already used. Request a new one from sign-in.'
+      return 'This reset link has expired. Request a new one from sign in.'
     }
     return err.message
   }

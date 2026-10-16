@@ -93,10 +93,6 @@ export function PasswordResetFromEmail({
           <p className="login-error" role="alert">
             {error}
           </p>
-          <p className="login-note login-note--muted">
-            Ask for a new reset email from the sign-in screen. If the link opened oddly in Outlook,
-            try opening it on your phone.
-          </p>
           <button type="button" className="btn btn-login" onClick={() => clearActionFromUrl()}>
             Back to sign in
           </button>

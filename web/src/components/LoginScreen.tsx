@@ -92,9 +92,7 @@ export function LoginScreen() {
     } catch (e) {
       if (e instanceof Error) {
         if (e.message === 'MISSING_EMAIL_DOMAIN') {
-          setError(
-            'Missing email domain for username sign-in. Set VITE_FIREBASE_AUTH_DOMAIN (from Firebase) or VITE_LOGIN_EMAIL_DOMAIN in web/.env, then rebuild—or use your full email here.',
-          )
+          setError('Use your full email address.')
         } else if (e.message === 'EMPTY_USERNAME') {
           setError('Enter your email or username.')
         } else {
@@ -157,15 +155,15 @@ export function LoginScreen() {
     setRequestOk('')
     const email = requestEmail.trim().toLowerCase()
     if (!looksLikeEmail(email)) {
-      setError('Enter a valid email (include @ and domain).')
+      setError('Enter a valid email.')
       return
     }
     if (requestPassword.length < 6) {
-      setError('Password must be at least 6 characters (Firebase minimum).')
+      setError('Password must be at least 6 characters.')
       return
     }
     if (requestPassword !== requestPasswordConfirm) {
-      setError('Password and confirmation do not match.')
+      setError('Passwords don’t match.')
       return
     }
     setBusy(true)
@@ -174,9 +172,7 @@ export function LoginScreen() {
       await submitAccessRequestFirestore(db, email, requestNote, requestPassword)
       setRequestPassword('')
       setRequestPasswordConfirm('')
-      setRequestOk(
-        'Request sent. After an admin approves you, sign in with this email and password.',
-      )
+      setRequestOk('Request sent. You can sign in once you’re approved.')
     } catch (err) {
       setError(formatRequestSubmitError(err))
     } finally {
@@ -198,9 +194,7 @@ export function LoginScreen() {
         } catch {
           setResetFeedback('err')
           setResetNote(
-            domainConfigured
-              ? 'Enter your email or username above, then try Forgot password again.'
-              : 'Enter your full email above, then try Forgot password again.',
+            domainConfigured ? 'Enter your email or username first.' : 'Enter your email first.',
           )
           return
         }
@@ -212,18 +206,14 @@ export function LoginScreen() {
         const methods = await fetchSignInMethodsForEmail(auth, target)
         if (methods.length > 0 && !methods.includes('password')) {
           setResetFeedback('err')
-          setResetNote(
-            'This email is not set up for a password login. Use the email/password you use for this parking app.',
-          )
+          setResetNote('This email isn’t set up for password sign-in.')
           return
         }
       }
 
       await sendPasswordResetEmail(auth, target)
       setResetFeedback('ok')
-      setResetNote(
-        `If an account exists for ${maskEmailForUi(target)}, a reset email was sent. Check inbox and spam.`,
-      )
+      setResetNote(`If ${maskEmailForUi(target)} has an account, a reset email is on its way.`)
     } catch (err) {
       setResetFeedback('err')
       setResetNote(formatAuthError(err))
@@ -269,9 +259,6 @@ export function LoginScreen() {
 
         {authMode === 'signIn' ? (
           <>
-            <p className="login-note login-note--muted">
-              Sign in with your email, or username if that is how your account was created.
-            </p>
             <form className="login-form" onSubmit={(e) => void handleSignIn(e)}>
               <label className="field-label" htmlFor="login-username">
                 Email or username
@@ -311,10 +298,6 @@ export function LoginScreen() {
                     'Use Google email'
                   )}
                   </button>
-                  <span className="login-microcopy__hint">
-                    {' '}
-                    — fills the email field from your Google account.
-                  </span>
                 </p>
               ) : null}
 
@@ -393,8 +376,7 @@ export function LoginScreen() {
         ) : (
           <>
             <p className="login-note login-note--muted">
-              New here? Enter your email, choose a password, and send a request. After approval you
-              can sign in with the same details.
+              You can sign in once an admin approves your request.
             </p>
             <form className="login-form" onSubmit={(e) => void handleRequestAccess(e)}>
               <label className="field-label" htmlFor="request-email">
@@ -434,10 +416,6 @@ export function LoginScreen() {
                     'Use Google email'
                   )}
                   </button>
-                  <span className="login-microcopy__hint">
-                    {' '}
-                    — use the Google account for this request.
-                  </span>
                 </p>
               ) : null}
 
@@ -493,7 +471,7 @@ export function LoginScreen() {
                 name="note"
                 rows={3}
                 maxLength={800}
-                placeholder="Your name or seva details (optional)"
+                placeholder="Your name"
                 value={requestNote}
                 onChange={(e) => {
                   setRequestNote(e.target.value)
